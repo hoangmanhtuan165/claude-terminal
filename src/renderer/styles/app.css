@@ -1,0 +1,1820 @@
+/* Giao dien KLTERMINAL. Moi gia tri mau/khoang cach lay tu tokens.css. */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font: var(--fs-md) / 1.5 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+/* Icon SVG dung chung (xem js/icons.js) - luon can giua, khong tu co dan */
+.icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Vong focus thong nhat: chi hien khi dieu huong bang ban phim */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* --- Khung ung dung ------------------------------------------------------ */
+
+.app {
+  display: grid;
+  grid-template-rows: var(--titlebar-h) 1fr 26px;
+  height: 100vh;
+}
+
+/* Thanh tieu de: keo duoc de di chuyen cua so, tru cac vung bam duoc */
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-left: var(--sp-3);
+  padding-right: var(--window-controls-w);
+  background: var(--surface-titlebar);
+  border-bottom: 1px solid var(--border-subtle);
+  -webkit-app-region: drag;
+}
+
+.titlebar button,
+.titlebar .tab-strip,
+.titlebar select,
+.titlebar input {
+  -webkit-app-region: no-drag;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  padding-right: var(--sp-2);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  font-size: 11px;
+}
+
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: var(--sp-2);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  min-height: 0;
+}
+
+.content {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-base);
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* --- Nut ------------------------------------------------------------------
+ * Pill tron hoan toan cho nut chu va nut tron cho icon - dac trung cua bang
+ * mau am nay, khac han khoi vuong-bo-goc cua ban truoc.
+ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 34px;
+  padding: 0 var(--sp-4);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-full);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.btn:active:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.btn:disabled {
+  opacity: 0.42;
+  cursor: default;
+}
+
+/* Nut hanh dong chinh (vi du "Nối tiếp phiên này"): to man, dam, co bong mau nhan */
+.btn-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-contrast);
+  font-weight: 600;
+  box-shadow: var(--shadow-accent-strong);
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.icon-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-full);
+  color: var(--text-tertiary);
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.icon-btn.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.icon-btn.is-pinned {
+  color: var(--accent);
+}
+
+.icon-btn.is-skip-on {
+  color: var(--danger);
+}
+
+.icon-btn.is-skip-on:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border-default);
+  border-bottom-width: 2px;
+  border-radius: var(--r-sm);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+/* --- Tab terminal (nam tren thanh tieu de) ------------------------------- */
+
+.tab-strip {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab-strip::-webkit-scrollbar {
+  display: none;
+}
+
+/*
+ * Nen tab active la MOT phan tu rieng, truot phia sau cac tab thay vi doi
+ * background tren tung nut - nho vay chuyen tab moi co the "truot" muot thay
+ * vi nhay mau tuc thi.
+ */
+.tab-active-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-full);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform var(--dur-base) var(--ease), width var(--dur-base) var(--ease),
+    height var(--dur-base) var(--ease), opacity var(--dur-fast) var(--ease);
+}
+
+.tab {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: 220px;
+  height: 30px;
+  padding: 0 var(--sp-2) 0 var(--sp-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.tab.is-active {
+  /* Nen that su do .tab-active-indicator dam nhan, o day chi doi mau chu */
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tab.is-dead .tab-label {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+.tab-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.tab-dot[data-type='claude'],
+.tab-dot[data-type='claude-resume'] {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* Phien claude dang chay voi --dangerously-skip-permissions - can noi bat hon
+   mau accent thuong de khong quen dang o phien "khong hoi lai". */
+.tab-dot[data-skip='true'] {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}
+
+.tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: var(--r-full);
+  color: var(--text-tertiary);
+  line-height: 1;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.tab:hover .tab-close,
+.tab.is-active .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.terminal-pane {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--term-bg);
+}
+
+/*
+ * Mot tab la mot hang ngang cac pane. Tab chi co mot pane thi hang do chi co
+ * mot phan tu, khong khac gi bo cuc cu.
+ */
+.terminal-instance {
+  position: absolute;
+  inset: 0;
+  display: none;
+  gap: 0;
+  padding: var(--sp-2) var(--sp-1) var(--sp-1) var(--sp-3);
+}
+
+.terminal-instance.is-active {
+  display: flex;
+}
+
+/* Mot o terminal. min-width:0 la bat buoc: khong co no thi noi dung xterm
+ * khong cho phep flex item co lai, keo vach chia se tran ra ngoai. */
+.terminal-pane-slot {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--r-md);
+}
+
+.terminal-pane-slot .xterm {
+  height: 100%;
+}
+
+/* Vien chi ra pane dang nhan ban phim - chi hien khi tab dang chia doi.
+ * Dung outline-offset am de vien nam ben trong, khong day lai bo cuc. */
+.terminal-pane-slot.is-focused {
+  outline: 1px solid var(--accent-border);
+  outline-offset: -1px;
+}
+
+/* Dang keo file vao pane nay */
+.terminal-pane-slot.is-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+  background: var(--accent-soft);
+}
+
+/* --- Hang go nhanh ------------------------------------------------------- */
+
+.quick-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-3) 0 var(--sp-3);
+}
+
+.quick-chip {
+  padding: 3px var(--sp-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.quick-chip:hover {
+  background: var(--bg-overlay);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.quick-chip-edit {
+  display: grid;
+  place-items: center;
+  padding: 4px 7px;
+  color: var(--text-tertiary);
+}
+
+/* Vach keo giua hai pane. Vung bam rong hon vach nhin thay cho de tro chuot. */
+.pane-divider {
+  position: relative;
+  flex: 0 0 9px;
+  align-self: stretch;
+  cursor: col-resize;
+}
+
+.pane-divider::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  background: var(--border-default);
+  transform: translateX(-50%);
+  transition: background var(--dur-fast) var(--ease), width var(--dur-fast) var(--ease);
+}
+
+.pane-divider:hover::after,
+.pane-divider.is-dragging::after {
+  width: 3px;
+  background: var(--accent);
+}
+
+/* Huy hieu nho tren tab bao rang tab do dang chia doi */
+.tab-split-badge {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+/* --- Tim trong terminal --------------------------------------------------- */
+
+.term-find {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-4);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2);
+  background: color-mix(in srgb, var(--bg-overlay) 92%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-md);
+  animation: pop-in var(--dur-fast) var(--ease);
+}
+
+.term-find input {
+  width: 200px;
+  padding: 4px var(--sp-3);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-full);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.term-find input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.term-find-count {
+  min-width: 62px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+/* --- Sidebar ------------------------------------------------------------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: var(--sp-6);
+}
+
+.sidebar-section + .sidebar-section {
+  margin-top: var(--sp-2);
+}
+
+.sidebar-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3) var(--sp-1);
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+
+.sidebar-heading:hover {
+  color: var(--text-secondary);
+}
+
+.sidebar-heading .chevron {
+  display: inline-flex;
+  transition: transform var(--dur-base) var(--ease);
+}
+
+.sidebar-heading.is-collapsed .chevron {
+  transform: rotate(-90deg);
+}
+
+.sidebar-heading .count {
+  margin-left: auto;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.sidebar-empty {
+  margin: 0 var(--sp-2) var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-lg);
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.project-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 1px var(--sp-2);
+  padding: var(--sp-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+
+.project-row:hover {
+  background: var(--bg-hover);
+}
+
+.project-row.is-active {
+  background: var(--bg-overlay);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Thu muc goc da bi xoa/doi ten - van xem lai lich su duoc, chi khong mo
+ * terminal moi o do duoc nua nen lam mo di de phan biet voi du an con dung. */
+.project-row.is-missing {
+  opacity: 0.55;
+}
+
+.project-row.is-missing .project-sub {
+  color: var(--danger);
+}
+
+.project-row.is-missing:hover {
+  opacity: 0.85;
+}
+
+/* Nut an cua hang da mat luon hien - khong bat hover dung cho mo di kem theo */
+.project-row.is-missing .project-actions {
+  opacity: 1;
+}
+
+.project-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.project-row.is-active .project-dot {
+  background: var(--accent);
+}
+
+.project-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.project-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-row.is-active .project-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.project-sub {
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.project-row:hover .project-actions,
+.project-row.is-active .project-actions,
+.project-row:focus-within .project-actions {
+  opacity: 1;
+}
+
+/* --- Man hinh lich su ---------------------------------------------------- */
+
+.history-layout {
+  display: grid;
+  grid-template-columns: 372px 1fr;
+  height: 100%;
+  min-height: 0;
+}
+
+.history-list-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.history-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+  padding: var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.search-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.search-field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.search-field input {
+  width: 100%;
+  height: 36px;
+  padding: 0 88px 0 32px;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font: inherit;
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.search-field input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.search-field .search-icon {
+  position: absolute;
+  top: 50%;
+  left: var(--sp-3);
+  color: var(--text-tertiary);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.search-field .search-kbd {
+  position: absolute;
+  top: 50%;
+  right: var(--sp-2);
+  padding: 1px 4px;
+  transform: translateY(-50%);
+  font-size: 9.5px;
+  pointer-events: none;
+}
+
+/* An goi y phim tat ngay khi dang go/da co noi dung - luc do khong can nua,
+ * va tranh de len nut xoa (x) mac dinh cua input type=search. */
+.search-field input:focus ~ .search-kbd,
+.search-field input:not(:placeholder-shown) ~ .search-kbd {
+  display: none;
+}
+
+.mode-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.segmented {
+  display: flex;
+  flex-shrink: 0;
+  padding: 3px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+}
+
+.segment {
+  padding: 4px var(--sp-3);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.segment:hover {
+  color: var(--text-primary);
+}
+
+.segment.is-active {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+select {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 var(--sp-2);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.toggle input {
+  accent-color: var(--accent);
+}
+
+.history-status {
+  min-height: 15px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.history-status.is-error {
+  color: var(--danger);
+}
+
+.history-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-1) var(--sp-2) var(--sp-4);
+}
+
+/* Tieu de nhom thoi gian, dinh khi cuon */
+.group-heading {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-2) var(--sp-2);
+  background: linear-gradient(var(--bg-surface) 72%, transparent);
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* So phien trong ngay: chu so nen dung font mono cho thang cot */
+.group-count {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.session-row {
+  display: block;
+  width: 100%;
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.session-row:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
+}
+
+.session-row.is-active {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-accent);
+}
+
+.session-row.is-cursor {
+  border-color: var(--border-strong);
+}
+
+.session-title {
+  overflow: hidden;
+  margin-bottom: var(--sp-2);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-row.is-active .session-title {
+  font-weight: 600;
+}
+
+/* Sao dat truoc tieu de, can theo dong chu chu khong theo khoi */
+.row-star {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-right: 5px;
+  color: var(--accent);
+}
+
+.session-note {
+  overflow: hidden;
+  margin-bottom: var(--sp-2);
+  padding-left: var(--sp-2);
+  border-left: 2px solid var(--accent-border);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-style: italic;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.session-project {
+  overflow: hidden;
+  max-width: 132px;
+  font-family: var(--font-ui);
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-role {
+  color: var(--accent);
+}
+
+.branch-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 110px;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hit-snippet {
+  margin-bottom: var(--sp-1);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+
+.hit-session {
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+mark {
+  padding: 0 1px;
+  background: var(--accent-soft);
+  border-radius: 2px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- Trang thai rong va dang tai ----------------------------------------- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 56px var(--sp-6);
+  text-align: center;
+}
+
+.empty-state .empty-icon {
+  font-size: 26px;
+  opacity: 0.5;
+}
+
+.empty-state .empty-title {
+  color: var(--text-secondary);
+  font-size: var(--fs-lg);
+}
+
+.empty-state .empty-hint {
+  max-width: 320px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+.skeleton-row {
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+}
+
+.skeleton-bar {
+  height: 9px;
+  border-radius: var(--r-full);
+  background: linear-gradient(
+    90deg,
+    var(--bg-hover) 25%,
+    var(--bg-active) 37%,
+    var(--bg-hover) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton-bar + .skeleton-bar {
+  margin-top: var(--sp-2);
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* --- Khung xem transcript ------------------------------------------------ */
+
+.transcript-wrap {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 0;
+}
+
+.transcript-wrap.has-outline {
+  grid-template-columns: 1fr 208px;
+}
+
+.transcript-pane {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-6) var(--sp-8) 64px;
+}
+
+.transcript-header {
+  margin-bottom: var(--sp-6);
+  padding-bottom: var(--sp-5);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.transcript-header h2 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.transcript-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+
+.transcript-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.btn-star.is-starred {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+/* Hang ghi chu: o nhap khong vien cho tan vao trang, chi hien vien khi tro/go */
+.transcript-note-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  color: var(--text-tertiary);
+}
+
+.note-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px var(--sp-3);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-full);
+  color: var(--text-primary);
+  font: inherit;
+  font-style: italic;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.note-input::placeholder {
+  color: var(--text-quaternary);
+}
+
+.note-input:hover {
+  border-color: var(--border-default);
+}
+
+.note-input:focus {
+  background: var(--bg-overlay);
+  border-color: var(--accent);
+  font-style: normal;
+  outline: none;
+}
+
+.note-saved {
+  flex-shrink: 0;
+  color: var(--accent);
+  font-size: var(--fs-xs);
+}
+
+.pill {
+  padding: 3px var(--sp-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.pill-muted {
+  color: var(--text-tertiary);
+}
+
+.message {
+  margin-bottom: var(--sp-6);
+  scroll-margin-top: var(--sp-4);
+}
+
+.message.is-user .message-body {
+  display: inline-block;
+  max-width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  border-radius: var(--r-lg) var(--r-lg) var(--r-lg) 6px;
+}
+
+.message.is-sidechain {
+  opacity: 0.76;
+}
+
+.message-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.message-role {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.message.is-user .message-role {
+  color: var(--accent);
+}
+
+.block-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.7;
+}
+
+details.block {
+  margin-top: var(--sp-2);
+}
+
+details.block summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 3px var(--sp-2);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+details.block summary:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Khoi lenh/ket qua cong cu luon nen toi, du app dang o theme sang hay toi -
+ * doc de hon va tach biet ro voi van ban thuong, giong khoi ma trong thiet ke. */
+details.block pre {
+  max-height: 340px;
+  margin: var(--sp-2) 0 0;
+  padding: var(--sp-3) var(--sp-4);
+  overflow: auto;
+  background: #26241f;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--r-lg);
+  color: #ddd6c9;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.block-result.is-error pre {
+  border-color: var(--danger);
+}
+
+.tool-name {
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
+.block-note,
+.transcript-note {
+  margin-top: var(--sp-1);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+/* Muc luc: nhay nhanh giua cac prompt trong phien dai */
+.transcript-outline {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--sp-6) var(--sp-3) var(--sp-6) var(--sp-2);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.outline-heading {
+  padding: 0 var(--sp-2) var(--sp-2);
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.outline-item {
+  display: block;
+  width: 100%;
+  padding: var(--sp-2) var(--sp-2);
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.outline-item:hover {
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+}
+
+.outline-item.is-current {
+  border-left-color: var(--accent);
+  color: var(--accent);
+}
+
+.outline-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* --- Command palette ------------------------------------------------------ */
+
+.palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  padding-top: 12vh;
+  background: rgba(30, 28, 25, 0.28);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fade-in var(--dur-base) var(--ease);
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 90vw);
+  max-height: 60vh;
+  overflow: hidden;
+  /* Kinh mo nhe: nen ban trong suot dat tren backdrop da blur o tren */
+  background: color-mix(in srgb, var(--bg-overlay) 92%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in var(--dur-base) var(--ease);
+}
+
+.palette-input {
+  flex-shrink: 0;
+  width: 100%;
+  padding: var(--sp-4);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font: var(--fs-lg) / 1.4 var(--font-ui);
+}
+
+.palette-input:focus {
+  outline: none;
+}
+
+.palette-list {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: var(--sp-2);
+}
+
+.palette-group {
+  padding: var(--sp-2) var(--sp-2) var(--sp-1);
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  background: none;
+  border: none;
+  border-radius: var(--r-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.palette-item.is-cursor {
+  background: var(--accent-soft);
+}
+
+.palette-item .item-icon {
+  flex-shrink: 0;
+  width: 18px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.palette-item.is-cursor .item-icon {
+  color: var(--accent);
+}
+
+/*
+ * Tiêu đề và dòng phụ nằm cùng một hàng cho gọn. Cắt đuôi phải đặt ở đây chứ
+ * không ở từng span con: span là inline nên tự nó không cắt được, và đường dẫn
+ * dài sẽ đẩy cả danh sách tràn ngang.
+ */
+.palette-item .item-body {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-item .item-title {
+  color: var(--text-primary);
+}
+
+.palette-item .item-sub {
+  margin-left: var(--sp-2);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.palette-footer {
+  display: flex;
+  gap: var(--sp-4);
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+}
+
+/* --- Thanh trang thai ---------------------------------------------------- */
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0 var(--sp-2);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+.status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  min-width: 0;
+  padding: 2px var(--sp-2);
+  overflow: hidden;
+  background: var(--bg-hover);
+  border-radius: var(--r-full);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.status-item:has(#status-shell:empty),
+.status-item:has(#status-history:empty) {
+  display: none;
+}
+
+.status-item .icon {
+  width: 12px;
+  height: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Doan van ban co the dai (duong dan cwd) - phai co the co lai khi statusbar hep */
+.status-item > span:last-child {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O chon model: van la mot status-item nhung bam duoc */
+.status-button {
+  border: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.status-button:hover {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+/* Menu chon model, neo phia tren nut o thanh trang thai */
+.model-menu {
+  position: fixed;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  min-width: 210px;
+  padding: var(--sp-1);
+  background: color-mix(in srgb, var(--bg-overlay) 94%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in var(--dur-fast) var(--ease);
+}
+
+.model-menu-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: none;
+  border: none;
+  border-radius: var(--r-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.model-menu-item:hover {
+  background: var(--accent-soft);
+}
+
+.model-menu-label {
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+}
+
+.model-menu-cmd {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+/* Nut tai khoan khi can chu y (chua dang nhap / sap phai dang nhap lai) */
+.status-button.is-warning {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.status-button.is-warning .icon {
+  color: var(--danger);
+}
+
+/* Muc dung o nguong canh bao vua (>= 70%) - dung mau nhan, chua phai bao dong */
+.status-button.is-caution {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.status-button.is-caution .icon {
+  color: var(--accent);
+}
+
+/* --- Thanh phan tram muc su dung ----------------------------------------- */
+
+.usage-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.usage-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.usage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: 4px;
+}
+
+.usage-label {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+
+.usage-pct {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+
+.usage-pct.is-caution {
+  color: #a37f11;
+}
+
+.usage-pct.is-danger {
+  color: var(--danger);
+}
+
+.usage-track {
+  height: 6px;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border-radius: var(--r-full);
+}
+
+.usage-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-full);
+  transition: width var(--dur-base) var(--ease);
+}
+
+.usage-fill.is-caution {
+  background: #d9a520;
+}
+
+.usage-fill.is-danger {
+  background: var(--danger);
+}
+
+.usage-note {
+  margin-top: 3px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.usage-error {
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+/* --- Menu tai khoan ------------------------------------------------------ */
+
+.account-menu {
+  position: fixed;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 320px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: var(--sp-4);
+  background: color-mix(in srgb, var(--bg-overlay) 94%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in var(--dur-fast) var(--ease);
+}
+
+.account-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.account-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.account-key {
+  color: var(--text-tertiary);
+}
+
+.account-val {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-empty {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+}
+
+.account-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.account-actions .btn {
+  flex: 1;
+  justify-content: center;
+  height: 32px;
+  padding: 0 var(--sp-3);
+}
+
+.account-divider {
+  height: 1px;
+  background: var(--border-subtle);
+}
+
+.account-section-title {
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.account-profile {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.account-profile-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-2);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.account-profile-main:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+/* Ho so dang dung thi khong bam duoc, nhung van phai doc ro rang */
+.account-profile-main:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.account-profile.is-active .account-profile-main {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.account-profile-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-profile-sub {
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.account-add {
+  justify-content: center;
+  height: 30px;
+  font-size: var(--fs-sm);
+}
+
+.account-note {
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.status-right {
+  margin-left: auto;
+}
+
+/* --- Thanh cuon ---------------------------------------------------------- */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: var(--r-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+  background-clip: content-box;
+}

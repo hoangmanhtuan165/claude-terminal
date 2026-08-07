@@ -1,0 +1,56 @@
+{
+  "name": "claude-terminal",
+  "version": "0.1.0",
+  "description": "Terminal desktop cho Claude Code tren Windows, co luu va tra cuu lich su phien lam viec",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "dist": "electron-builder --win"
+  },
+  "keywords": [
+    "claude-code",
+    "terminal",
+    "electron"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@lydell/node-pty": "1.2.0-beta.14",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-search": "^0.15.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/xterm": "^5.5.0"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.klterminal.app",
+    "productName": "KLTERMINAL",
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "asarUnpack": [
+      "src/main/history/history-worker.js",
+      "src/main/history/transcript-parser.js",
+      "node_modules/@lydell/**"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-${version}-setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "KLTERMINAL"
+    }
+  }
+}

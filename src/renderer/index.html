@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="vi" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <!--
+      CSP chặt: không cho tải bất kỳ tài nguyên từ xa nào. Nội dung transcript là
+      dữ liệu không tin cậy, nên renderer phải bị khoá kín.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;"
+    />
+    <title>KLTERMINAL</title>
+    <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
+    <link rel="stylesheet" href="styles/tokens.css" />
+    <link rel="stylesheet" href="styles/app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <!-- Thanh tiêu đề: tab nằm thẳng trên đây, nút cửa sổ do Windows vẽ ở góc phải -->
+      <header class="titlebar">
+        <div class="brand">
+          <span class="brand-mark" data-icon="diamond"></span>
+          <span>KLTERMINAL</span>
+        </div>
+
+        <div id="tab-strip" class="tab-strip"></div>
+
+        <button id="btn-new-claude" class="icon-btn" title="Tab Claude mới (Ctrl+T)">
+          <span data-icon="plus"></span>
+        </button>
+
+        <div class="titlebar-right">
+          <button id="btn-palette" class="icon-btn" title="Bảng lệnh (Ctrl+K)">
+            <span data-icon="terminal-prompt"></span>
+          </button>
+          <button id="nav-history" class="icon-btn" title="Lịch sử (Ctrl+H)">
+            <span data-icon="clock"></span>
+          </button>
+          <button id="btn-theme" class="icon-btn" title="Đổi sáng/tối">
+            <span data-icon="contrast"></span>
+          </button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="sidebar">
+          <div id="projects-sidebar" class="sidebar-scroll"></div>
+        </aside>
+
+        <main class="content">
+          <!-- Màn hình terminal -->
+          <section id="terminal-screen" class="screen">
+            <!--
+              Hàng gõ nhanh: bấm là gõ thẳng câu đó xuống terminal đang chạy.
+              Đo trên 4044 prompt thật: "tiếp tục" 146 lần, "tiếp" 78, "ok" 36 —
+              hơn 270 lần gõ lại đúng vài chữ.
+            -->
+            <div id="quick-bar" class="quick-bar"></div>
+
+            <div id="terminal-pane" class="terminal-pane">
+              <!-- Tìm trong terminal, hiện bằng Ctrl+F -->
+              <div id="term-find" class="term-find is-hidden">
+                <input id="term-find-input" type="text" placeholder="Tìm trong terminal..." />
+                <span id="term-find-count" class="term-find-count"></span>
+                <button id="term-find-prev" class="icon-btn" title="Kết quả trước (Shift+Enter)">
+                  <span data-icon="chevron-up"></span>
+                </button>
+                <button id="term-find-next" class="icon-btn" title="Kết quả sau (Enter)">
+                  <span data-icon="chevron-down"></span>
+                </button>
+                <button id="term-find-close" class="icon-btn" title="Đóng (Esc)">
+                  <span data-icon="x"></span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Màn hình lịch sử -->
+          <section id="history-screen" class="screen is-hidden">
+            <div class="history-layout">
+              <div class="history-list-pane">
+                <div class="history-controls">
+                  <div class="search-row">
+                    <div class="search-field">
+                      <span class="search-icon" data-icon="search"></span>
+                      <input
+                        id="history-search"
+                        type="search"
+                        placeholder="Tìm lịch sử..."
+                        autocomplete="off"
+                      />
+                      <kbd class="kbd search-kbd">Ctrl+Shift+F</kbd>
+                    </div>
+                    <button
+                      id="btn-refresh-history"
+                      class="btn"
+                      title="Quét lại thư mục transcript để cập nhật phiên mới (Ctrl+R)"
+                    >
+                      <span data-icon="refresh"></span> Quét lại
+                    </button>
+                  </div>
+
+                  <div class="mode-row">
+                    <div class="segmented">
+                      <button class="segment is-active" data-mode="title" title="Lọc tức thời theo tiêu đề phiên">
+                        Tiêu đề
+                      </button>
+                      <button class="segment" data-mode="fulltext" title="Tìm trong nội dung hội thoại, nhấn Enter để chạy">
+                        Toàn văn
+                      </button>
+                    </div>
+                    <select id="history-scope" title="Giới hạn theo dự án"></select>
+                  </div>
+
+                  <div class="filter-row">
+                    <label
+                      class="toggle"
+                      title="Quét thẳng transcript gốc để tìm được cả lệnh đã chạy và kết quả công cụ. Phải đọc gần 2GB nên mất khoảng 15 giây."
+                    >
+                      <input id="search-include-tools" type="checkbox" /> Quét sâu (chậm)
+                    </label>
+                    <label class="toggle" title="Tìm cả trong công việc của subagent">
+                      <input id="search-include-sidechain" type="checkbox" /> Kể cả subagent
+                    </label>
+                    <label
+                      class="toggle"
+                      title="Ẩn các phiên mở ra rồi bỏ ngay và phiên do công cụ khác tự sinh (dưới 200KB). Trên dữ liệu hiện có, nhóm này chiếm hơn một phần ba danh sách."
+                    >
+                      <input id="hide-small-sessions" type="checkbox" /> Ẩn phiên vụn
+                    </label>
+                  </div>
+
+                  <div id="history-status" class="history-status"></div>
+                </div>
+
+                <!-- tabindex để danh sách nhận được phím mũi tên -->
+                <div id="history-list" class="history-list" tabindex="0"></div>
+              </div>
+
+              <div id="transcript-wrap" class="transcript-wrap">
+                <div id="transcript-view" class="transcript-pane"></div>
+                <nav id="transcript-outline" class="transcript-outline is-hidden"></nav>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <footer class="statusbar">
+        <span class="status-item">
+          <span class="status-icon" data-icon="folder"></span>
+          <span id="status-cwd">—</span>
+        </span>
+        <!--
+          Đổi model: /model bị gõ tay 316 lần trên 65/151 phiên, nhiều gấp 10
+          lần lệnh phổ biến thứ nhì. Bấm ở đây là gõ thẳng /model xuống terminal.
+        -->
+        <button id="model-picker" class="status-item status-button" title="Đổi model cho phiên Claude đang chạy">
+          <span class="status-icon" data-icon="cpu"></span>
+          <span id="status-model">model</span>
+        </button>
+        <!--
+          Tài khoản Claude: chỉ hiển thị thông tin không bí mật (gói, hạn mức,
+          hạn token). Mọi thao tác đăng nhập đều do `claude /login` lo, app chỉ
+          gõ lệnh đó xuống terminal.
+        -->
+        <button id="account-button" class="status-item status-button" title="Tài khoản Claude">
+          <span class="status-icon" data-icon="user"></span>
+          <span id="status-account">tài khoản</span>
+        </button>
+        <!--
+          Mức dùng: % hạn mức phiên 5 giờ (gọi API) và % context của phiên đang
+          chạy (đọc file). Bấm vào mở menu tài khoản để xem chi tiết.
+        -->
+        <button id="usage-button" class="status-item status-button is-hidden" title="Mức sử dụng">
+          <span class="status-icon" data-icon="gauge"></span>
+          <span id="status-usage"></span>
+        </button>
+        <span class="status-item">
+          <span class="status-icon" data-icon="terminal-prompt"></span>
+          <span id="status-shell"></span>
+        </span>
+        <span class="status-item status-right">
+          <span class="status-icon" data-icon="clock"></span>
+          <span id="status-history"></span>
+        </span>
+      </footer>
+    </div>
+
+    <!-- Bảng lệnh, mở bằng Ctrl+K -->
+    <div id="palette-root"></div>
+
+    <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+    <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+    <script src="../../node_modules/@xterm/addon-search/lib/addon-search.js"></script>
+    <script src="../../node_modules/@xterm/addon-web-links/lib/addon-web-links.js"></script>
+
+    <script src="js/icons.js"></script>
+    <script src="js/format-utils.js"></script>
+    <script src="js/theme-manager.js"></script>
+    <script src="js/terminal-tabs.js"></script>
+    <script src="js/terminal-find.js"></script>
+    <script src="js/transcript-view.js"></script>
+    <script src="js/history-panel.js"></script>
+    <script src="js/projects-sidebar.js"></script>
+    <script src="js/quick-send.js"></script>
+    <script src="js/account-panel.js"></script>
+    <script src="js/command-palette.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
