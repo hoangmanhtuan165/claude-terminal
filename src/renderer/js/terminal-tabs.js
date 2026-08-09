@@ -560,19 +560,24 @@ class TerminalTabs {
    * PTY la luong van ban thuan: anh khong the "dan" thang byte vao duoc. Uu
    * tien anh truoc - neu clipboard co anh (vi du vua chup man hinh), luu ra
    * file PNG tam roi go duong dan file do vao terminal, giong cach VS Code xu
-   * ly dan anh. Claude Code doc duong dan anh trong prompt va tu nhan no la
-   * file dinh kem. Khong co anh thi dan van ban binh thuong.
+   * ly dan anh. Khong co anh thi dan van ban binh thuong.
+   *
+   * Dung term.paste() thay vi ghi thang qua pty.write(): paste() boc du lieu
+   * trong chuoi bracketed-paste (ESC[200~...ESC[201~) khi Claude Code (hoac
+   * CLI khac) da bat che do nay, nho vay CLI phan biet duoc day la noi dung
+   * DAN chu khong phai go tung phim - dieu kien de no nhan ra duong dan la
+   * anh va hien the o dang khung xem truoc thay vi text duong dan tho.
    */
   async _pasteFromClipboard(pane) {
     const filePath = await window.api.clipboard.pasteImage();
     if (filePath) {
       const quoted = /\s/.test(filePath) ? `"${filePath}"` : filePath;
-      window.api.pty.write(pane.id, quoted);
+      pane.term.paste(quoted);
       return;
     }
 
     const text = await window.api.clipboard.readText();
-    if (text) window.api.pty.write(pane.id, text);
+    if (text) pane.term.paste(text);
   }
 
   /** Dan tu clipboard he thong vao dung pane theo id - dung cho muc "Dán" tren menu chuot phai. */
