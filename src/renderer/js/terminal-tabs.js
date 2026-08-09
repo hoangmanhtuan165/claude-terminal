@@ -563,16 +563,37 @@ class TerminalTabs {
    * ly dan anh. Khong co anh thi dan van ban binh thuong.
    *
    * Dung term.paste() thay vi ghi thang qua pty.write(): paste() boc du lieu
-   * trong chuoi bracketed-paste (ESC[200~...ESC[201~) khi Claude Code (hoac
-   * CLI khac) da bat che do nay, nho vay CLI phan biet duoc day la noi dung
-   * DAN chu khong phai go tung phim - dieu kien de no nhan ra duong dan la
-   * anh va hien the o dang khung xem truoc thay vi text duong dan tho.
+   * trong chuoi bracketed-paste (ESC[200~...ESC[201~) khi CLI dang chay da bat
+   * che do nay, giup no phan biet day la noi dung DAN chu khong phai go phim.
+   *
+   * Tab SSH: duong dan file tam chi ton tai tren may Windows cuc bo, tien
+   * trinh Claude Code chay tren may chu remote khong doc duoc - phai scp file
+   * len truoc (giong het co che keo-tha o _uploadFilesToSsh) roi dan duong
+   * dan TREN MAY CHU, khong phai duong dan Windows.
+   *
+   * Tien to "@": Claude Code chi nhan mot chuoi la THAM CHIEU FILE (va doi
+   * sang khung xem truoc anh) khi no bat dau bang "@" (cu phap @mention cua
+   * chinh no) - mot duong dan tho, du hop le, van chi la text thuong. Vi
+   * duong dan tam do app tu dat ten (khong co khoang trang) nen luon an toan
+   * de gan "@" thang vao truoc, khong can bao ngoac kep.
    */
   async _pasteFromClipboard(pane) {
     const filePath = await window.api.clipboard.pasteImage();
     if (filePath) {
-      const quoted = /\s/.test(filePath) ? `"${filePath}"` : filePath;
-      pane.term.paste(quoted);
+      if (pane.sessionType === 'ssh' && pane.sshHostId) {
+        const fileName = filePath.split(/[\\/]/).pop();
+        pane.term.write(`\r\n\x1b[90m--- đang tải ảnh lên ${fileName}... ---\x1b[0m\r\n`);
+        const result = await window.api.ssh.uploadFile(pane.sshHostId, filePath);
+        if (result.ok) {
+          pane.term.paste(`@${result.remotePath}`);
+        } else {
+          pane.term.write(`\x1b[31m--- lỗi tải ảnh lên: ${result.error} ---\x1b[0m\r\n`);
+        }
+        return;
+      }
+
+      const reference = /\s/.test(filePath) ? `"${filePath}"` : `@${filePath}`;
+      pane.term.paste(reference);
       return;
     }
 
