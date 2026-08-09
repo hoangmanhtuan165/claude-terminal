@@ -47,11 +47,17 @@ function saveBuffer(buffer) {
   return filePath;
 }
 
-/** Luu anh clipboard hien tai ra file, tra ve duong dan hoac null neu clipboard khong co anh. */
+/**
+ * Luu anh clipboard hien tai ra file, tra ve { filePath, dataUrl } hoac null
+ * neu clipboard khong co anh. Kem dataUrl de renderer hien khung xem truoc -
+ * ban than terminal (PTY van ban thuan) khong the ve anh thuc.
+ */
 function pasteImageToFile() {
   const image = clipboard.readImage();
   if (image.isEmpty()) return null;
-  return saveBuffer(image.toPNG());
+  const buffer = image.toPNG();
+  const filePath = saveBuffer(buffer);
+  return { filePath, dataUrl: `data:image/png;base64,${buffer.toString('base64')}` };
 }
 
 const SCREENSHOT_POLL_MS = 400;

@@ -576,16 +576,24 @@ class TerminalTabs {
    * chinh no) - mot duong dan tho, du hop le, van chi la text thuong. Vi
    * duong dan tam do app tu dat ten (khong co khoang trang) nen luon an toan
    * de gan "@" thang vao truoc, khong can bao ngoac kep.
+   *
+   * Ngay ca sau khi sua, terminal (PTY van ban thuan) van chi hien "[Image
+   * #1]" hoac duong dan trong dong hoi thoai - do la cach chinh Claude Code
+   * bieu dien anh dinh kem trong lich su, khong ve thuc pixel anh duoc, dung
+   * cho moi CLI khac. De nguoi dung con thay minh vua dan dung anh, tu ve
+   * mot the xem truoc noi (giong het khi bam nut "Chup man hinh" o quick-send).
    */
   async _pasteFromClipboard(pane) {
-    const filePath = await window.api.clipboard.pasteImage();
-    if (filePath) {
+    const image = await window.api.clipboard.pasteImage();
+    if (image) {
+      const { filePath, dataUrl } = image;
       if (pane.sessionType === 'ssh' && pane.sshHostId) {
         const fileName = filePath.split(/[\\/]/).pop();
         pane.term.write(`\r\n\x1b[90m--- đang tải ảnh lên ${fileName}... ---\x1b[0m\r\n`);
         const result = await window.api.ssh.uploadFile(pane.sshHostId, filePath);
         if (result.ok) {
           pane.term.paste(`@${result.remotePath}`);
+          this._showPastePreview(pane, dataUrl);
         } else {
           pane.term.write(`\x1b[31m--- lỗi tải ảnh lên: ${result.error} ---\x1b[0m\r\n`);
         }
@@ -594,11 +602,31 @@ class TerminalTabs {
 
       const reference = /\s/.test(filePath) ? `"${filePath}"` : `@${filePath}`;
       pane.term.paste(reference);
+      this._showPastePreview(pane, dataUrl);
       return;
     }
 
     const text = await window.api.clipboard.readText();
     if (text) pane.term.paste(text);
+  }
+
+  /** The nho xem truoc anh vua dan, tu bien mat sau vai giay - xac nhan dung anh da dan. */
+  _showPastePreview(pane, dataUrl) {
+    document.querySelector('.screenshot-preview')?.remove();
+
+    const card = document.createElement('div');
+    card.className = 'screenshot-preview';
+    card.innerHTML = `
+      <img src="${dataUrl}" alt="Ảnh vừa dán" />
+      <span>Đã dán ảnh vào terminal</span>`;
+    document.body.append(card);
+
+    const rect = pane.element.getBoundingClientRect();
+    card.style.left = `${Math.max(8, rect.right - 228)}px`;
+    card.style.top = `${rect.top + 8}px`;
+
+    card.addEventListener('click', () => card.remove());
+    setTimeout(() => card.remove(), 4000);
   }
 
   /** Dan tu clipboard he thong vao dung pane theo id - dung cho muc "Dán" tren menu chuot phai. */
