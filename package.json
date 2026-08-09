@@ -1,6 +1,6 @@
 {
   "name": "claude-terminal",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Terminal desktop cho Claude Code tren Windows, co luu va tra cuu lich su phien lam viec",
   "main": "src/main/main.js",
   "scripts": {
@@ -21,7 +21,6 @@
     "@lydell/node-pty": "1.2.0-beta.14",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-search": "^0.15.0",
-    "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "electron-updater": "^6.8.9",
     "ssh2": "^1.17.0"

@@ -251,9 +251,36 @@ class TerminalTabs {
     const searchAddon = new window.SearchAddon.SearchAddon();
     term.loadAddon(fitAddon);
     term.loadAddon(searchAddon);
-    term.loadAddon(
-      new window.WebLinksAddon.WebLinksAddon((_event, uri) => window.api.app.openExternal(uri)),
+    // Tu viet link provider thay vi dung WebLinksAddon truc tiep: addon do
+    // quet TUNG DONG MAN HINH rieng le nen URL dai bi xuong dong (rat pho
+    // bien voi link dang nhap OAuth) bi cat thanh hai lien ket rieng, sai khi
+    // bam - xem terminal-links.js.
+    term.registerLinkProvider(
+      window.createTerminalLinkProvider(term, (uri) => window.api.app.openExternal(uri)),
     );
+
+    /**
+     * OSC 52: chuong trinh dang chay (vd `claude` tren VPS qua ssh, hoi "press
+     * c to copy") tu ghi thang vao clipboard he thong qua chuoi dieu khien
+     * nay, khong can nguoi dung tu bloi den. Chi GHI, khong bao gio tra loi
+     * truy van doc lai (payload "?") - tranh mot chuong trinh tu xa doc trom
+     * noi dung clipboard cua may that.
+     */
+    term.parser.registerOscHandler(52, (data) => {
+      const separatorIndex = data.indexOf(';');
+      const payload = separatorIndex === -1 ? '' : data.slice(separatorIndex + 1);
+      if (!payload || payload === '?') return true;
+
+      try {
+        const binary = atob(payload);
+        const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+        const text = new TextDecoder('utf-8').decode(bytes);
+        if (text) window.api.clipboard.writeText(text);
+      } catch {
+        // Base64 khong hop le - bo qua, khong lam vo phien.
+      }
+      return true;
+    });
 
     term.open(wrapper);
     term.onData((data) => {
