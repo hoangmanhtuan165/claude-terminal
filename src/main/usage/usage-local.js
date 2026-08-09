@@ -302,4 +302,4 @@ async function get({ force = false } = {}) {
   return { context, today: todayCache };
 }
 
-module.exports = { get, getContext, getToday, CONTEXT_WINDOW };
+module.exports = { get, getContext, getToday, CONTEXT_WINDOW, costOf };

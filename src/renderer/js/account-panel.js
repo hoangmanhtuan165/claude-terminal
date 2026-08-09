@@ -14,12 +14,21 @@
 /** Duoi nguong nay thi coi la sap het han, hien canh bao mau. */
 const ACCESS_WARN_MINUTES = 30;
 
+/**
+ * Tu nguong nay tro len thi bao "sap nen" ngu canh. Claude Code tu nen hoi
+ * thoai truoc khi cham tran 200k token that su, nen chon 95% lam moc an toan
+ * de canh bao som ma khong bao qua som (da o muc is-warning >= 90% tu truoc).
+ */
+const CONTEXT_COMPACT_WARN_PCT = 95;
+
 class AccountPanel {
-  constructor({ button, label, usageButton, usageLabel, quickSend, onNeedTerminal }) {
+  constructor({ button, label, usageButton, usageLabel, updateButton, updateLabel, quickSend, onNeedTerminal }) {
     this.button = button;
     this.label = label;
     this.usageButton = usageButton;
     this.usageLabel = usageLabel;
+    this.updateButton = updateButton;
+    this.updateLabel = updateLabel;
     this.quickSend = quickSend;
     this.onNeedTerminal = onNeedTerminal || (() => {});
 
@@ -27,10 +36,91 @@ class AccountPanel {
     this.profiles = [];
     this.limits = null;
     this.local = null;
+    this.startupPrefs = { openAtLogin: false, minimizeToTray: false, supported: false };
+    this.appInfo = null;
+    this.updateStatus = { phase: 'idle' };
 
     this.button.addEventListener('click', () => this._toggleMenu());
     // Bam vao o muc dung cung mo menu tai khoan - moi chi tiet deu o do.
     this.usageButton?.addEventListener('click', () => this._toggleMenu());
+
+    this.updateButton?.addEventListener('click', () => this._onUpdateButtonClick());
+    window.api.update?.onStatus((status) => this._handleUpdateStatus(status));
+  }
+
+  // --- Tu dong cap nhat ------------------------------------------------------
+
+  _handleUpdateStatus(status) {
+    this.updateStatus = status;
+    this._paintUpdateButton();
+    const menu = document.querySelector('.account-menu');
+    if (menu) {
+      menu.innerHTML = this._menuHtml();
+      this._bindMenu(menu);
+    }
+  }
+
+  _paintUpdateButton() {
+    if (!this.updateButton) return;
+    const phase = this.updateStatus.phase;
+    const visible = phase === 'available' || phase === 'downloading' || phase === 'ready';
+
+    this.updateButton.classList.toggle('is-hidden', !visible);
+    // Tai dung mau is-caution (accent) co san - "co viec dang cho", chua phai
+    // canh bao/loi nen khong dung is-warning.
+    this.updateButton.classList.toggle('is-caution', visible);
+
+    if (phase === 'available') {
+      this.updateLabel.textContent = `bản mới ${this.updateStatus.version}`;
+      this.updateButton.title = 'Có bản cập nhật mới — bấm để tải xuống';
+    } else if (phase === 'downloading') {
+      this.updateLabel.textContent = `đang tải ${this.updateStatus.percent ?? 0}%`;
+      this.updateButton.title = 'Đang tải bản cập nhật';
+    } else if (phase === 'ready') {
+      this.updateLabel.textContent = `sẵn sàng cài ${this.updateStatus.version}`;
+      this.updateButton.title = 'Bấm để cài đặt và khởi động lại';
+    }
+  }
+
+  _onUpdateButtonClick() {
+    const phase = this.updateStatus.phase;
+    if (phase === 'available') window.api.update.download();
+    else if (phase === 'ready') {
+      const ok = window.confirm('Cài đặt bản cập nhật mới và khởi động lại KLTERMINAL ngay?');
+      if (ok) window.api.update.install();
+    }
+  }
+
+  _updateSectionHtml() {
+    const { escapeHtml } = window.formatUtils;
+    const phase = this.updateStatus.phase;
+    const version = this.appInfo?.appVersion ? `v${this.appInfo.appVersion}` : '';
+
+    const statusText =
+      phase === 'checking'
+        ? 'Đang kiểm tra...'
+        : phase === 'available'
+          ? `Có bản mới ${escapeHtml(this.updateStatus.version || '')}`
+          : phase === 'downloading'
+            ? `Đang tải xuống... ${this.updateStatus.percent ?? 0}%`
+            : phase === 'ready'
+              ? `Sẵn sàng cài ${escapeHtml(this.updateStatus.version || '')}`
+              : phase === 'error'
+                ? `Lỗi: ${escapeHtml(this.updateStatus.message || '')}`
+                : 'Đang dùng bản mới nhất';
+
+    const actionButton =
+      phase === 'available'
+        ? '<button class="btn btn-ghost" data-action="update-download">Tải xuống</button>'
+        : phase === 'ready'
+          ? '<button class="btn btn-primary" data-action="update-install">Cài đặt & khởi động lại</button>'
+          : '<button class="btn btn-ghost" data-action="update-check">Kiểm tra cập nhật</button>';
+
+    return `
+      <div class="account-divider"></div>
+      <div class="account-section-title">Cập nhật ${escapeHtml(version)}</div>
+      <div class="account-row"><span class="account-val">${statusText}</span></div>
+      ${actionButton}`;
   }
 
   async refresh() {
@@ -72,19 +162,34 @@ class AccountPanel {
     this.usageButton.classList.remove('is-hidden');
 
     // Hai con so khac ban chat nen ghi ro nhan, khong de nguoi doc phai doan.
+    // Ngu canh gan day (>= 95%) thi ghi thang "sap nen" - mau sac don le de
+    // lot giua thanh trang thai, phai co chu moi chac an duoc.
+    const contextNearCompact = contextPct !== null && contextPct >= CONTEXT_COMPACT_WARN_PCT;
     const parts = [];
     if (sessionPct !== null) parts.push(`phiên ${Math.round(sessionPct)}%`);
-    if (contextPct !== null) parts.push(`ngữ cảnh ${Math.round(contextPct)}%`);
+    if (contextPct !== null) {
+      parts.push(
+        contextNearCompact
+          ? `ngữ cảnh ${Math.round(contextPct)}% · sắp nén`
+          : `ngữ cảnh ${Math.round(contextPct)}%`,
+      );
+    }
     this.usageLabel.textContent = parts.join(' · ');
 
-    // To mau theo con so dang lo nhat trong hai.
+    // To mau theo con so dang lo nhat trong hai; rieng sap-nen-ngu-canh la muc
+    // canh bao rieng, khong chi dua vao "worst" chung vi day la dau hieu
+    // Claude Code sap TU DONG hanh dong (nen hoi thoai), khac voi han muc goi
+    // (nguoi dung khong lam gi cung tu reset).
     const worst = Math.max(sessionPct ?? 0, contextPct ?? 0);
-    this.usageButton.classList.toggle('is-warning', worst >= 90);
-    this.usageButton.classList.toggle('is-caution', worst >= 70 && worst < 90);
+    this.usageButton.classList.toggle('is-critical', contextNearCompact);
+    this.usageButton.classList.toggle('is-warning', !contextNearCompact && worst >= 90);
+    this.usageButton.classList.toggle('is-caution', !contextNearCompact && worst >= 70 && worst < 90);
 
     this.usageButton.title = this.limits?.stale
       ? `Số liệu cũ (${this.limits.staleReason})`
-      : 'Mức sử dụng — bấm để xem chi tiết';
+      : contextNearCompact
+        ? 'Ngữ cảnh phiên đang chạy sắp đầy — Claude Code sắp tự nén lại hội thoại'
+        : 'Mức sử dụng — bấm để xem chi tiết';
   }
 
   _paintButton() {
@@ -117,6 +222,8 @@ class AccountPanel {
 
     await this.refresh();
     this.profiles = await window.api.account.listProfiles();
+    this.startupPrefs = await window.api.app.getStartupPrefs();
+    if (!this.appInfo) this.appInfo = await window.api.app.info();
     // Chi phi hom nay tinh nen o main; lan mo menu dau tien co the chua co.
     if (!this.local?.today) {
       window.api.usage.local().then((local) => {
@@ -217,7 +324,45 @@ class AccountPanel {
       <button class="btn btn-ghost account-add" data-action="add-profile">
         ${window.icons.svg('plus', { size: 12 })} Thêm hồ sơ...
       </button>
-      <div class="account-note">Đổi hồ sơ sẽ khởi động lại ứng dụng để lịch sử và tài khoản khớp nhau.</div>`;
+      <div class="account-note">Đổi hồ sơ sẽ khởi động lại ứng dụng để lịch sử và tài khoản khớp nhau.</div>
+
+      ${this._startupHtml()}
+      ${this._backupSectionHtml()}
+      ${this._updateSectionHtml()}`;
+  }
+
+  _backupSectionHtml() {
+    return `
+      <div class="account-divider"></div>
+      <div class="account-section-title">Sao lưu cấu hình</div>
+      <div class="account-note">Cài đặt, dự án ghim, hồ sơ SSH, không gian làm việc, ghi chú phiên.</div>
+      <div class="account-actions">
+        <button class="btn btn-ghost" data-action="backup-export">Xuất ra file</button>
+        <button class="btn btn-ghost" data-action="backup-import">Nhập từ file</button>
+      </div>`;
+  }
+
+  _startupHtml() {
+    if (!this.startupPrefs.supported) return '';
+    return `
+      <div class="account-divider"></div>
+      <div class="account-section-title">Khởi động</div>
+      <label class="toggle account-toggle-row">
+        <input type="checkbox" data-toggle="open-at-login" ${this.startupPrefs.openAtLogin ? 'checked' : ''} />
+        Khởi động cùng Windows
+      </label>
+      <label class="toggle account-toggle-row">
+        <input type="checkbox" data-toggle="minimize-to-tray" ${this.startupPrefs.minimizeToTray ? 'checked' : ''} />
+        Thu vào khay hệ thống khi đóng cửa sổ
+      </label>
+      <label class="field-label" style="margin-top:var(--sp-1)">
+        Phím tắt toàn cục bật/ẩn cửa sổ (để trống = tắt)
+        <div class="field-key-row">
+          <input class="field-input" data-f="toggle-hotkey" value="${window.formatUtils.escapeHtml(this.startupPrefs.toggleHotkey || '')}" placeholder="vd: Control+Shift+Space" />
+          <button class="btn btn-ghost" data-action="save-hotkey">Lưu</button>
+        </div>
+        <span class="hotkey-error"></span>
+      </label>`;
   }
 
   /**
@@ -361,6 +506,50 @@ class AccountPanel {
         this._bindMenu(menu);
       });
     }
+
+    menu.querySelector('[data-toggle="open-at-login"]')?.addEventListener('change', async (event) => {
+      this.startupPrefs.openAtLogin = await window.api.app.setOpenAtLogin(event.target.checked);
+    });
+
+    menu.querySelector('[data-toggle="minimize-to-tray"]')?.addEventListener('change', async (event) => {
+      this.startupPrefs.minimizeToTray = await window.api.app.setMinimizeToTray(event.target.checked);
+    });
+
+    menu.querySelector('[data-action="save-hotkey"]')?.addEventListener('click', async () => {
+      const input = menu.querySelector('[data-f="toggle-hotkey"]');
+      const errorEl = menu.querySelector('.hotkey-error');
+      const result = await window.api.app.setToggleHotkey(input.value.trim());
+      this.startupPrefs.toggleHotkey = result.hotkey;
+      input.value = result.hotkey;
+      errorEl.textContent = result.ok ? '' : result.error || 'Không đặt được phím tắt này.';
+    });
+
+    menu.querySelector('[data-action="backup-export"]')?.addEventListener('click', async () => {
+      const result = await window.api.backup.export();
+      if (result.saved) window.alert(`Đã lưu: ${result.filePath}`);
+    });
+
+    menu.querySelector('[data-action="backup-import"]')?.addEventListener('click', async () => {
+      const ok = window.confirm(
+        'Nhập cấu hình sẽ GHI ĐÈ cài đặt, dự án ghim, hồ sơ SSH, không gian làm việc và ghi chú phiên hiện tại, sau đó khởi động lại KLTERMINAL. Tiếp tục?',
+      );
+      if (!ok) return;
+      const result = await window.api.backup.import();
+      if (!result.imported && result.error) window.alert(result.error);
+    });
+
+    menu.querySelector('[data-action="update-check"]')?.addEventListener('click', () => {
+      this.updateStatus = { phase: 'checking' };
+      menu.innerHTML = this._menuHtml();
+      this._bindMenu(menu);
+      window.api.update.check();
+    });
+    menu.querySelector('[data-action="update-download"]')?.addEventListener('click', () => {
+      window.api.update.download();
+    });
+    menu.querySelector('[data-action="update-install"]')?.addEventListener('click', () => {
+      window.api.update.install();
+    });
   }
 
   /**

@@ -20,13 +20,17 @@ const ROLE_LABEL = {
 const MIN_PROMPTS_FOR_OUTLINE = 3;
 
 class TranscriptView {
-  constructor({ container, outlineElement, wrapElement, onResume, onNoteChange }) {
+  constructor({ container, outlineElement, wrapElement, onResume, onNoteChange, onNavigate }) {
     this.container = container;
     this.outlineElement = outlineElement;
     this.wrapElement = wrapElement;
     this.onResume = onResume || (() => {});
     // Danh sach phien ben trai phai ve lai sao khi doi, nen bao nguoc len app.
     this.onNoteChange = onNoteChange || (() => {});
+    // (session, direction) -> phien ke tiep/truoc cung thu muc, null neu khong co.
+    this.onNavigate = onNavigate || (() => null);
+    // Bao nguoc de danh sach ben trai to sang dung hang khi dieu huong bang nut ‹ ›.
+    this.onSessionNavigated = () => {};
 
     this.currentSession = null;
     this.showToolBlocks = false;
@@ -99,9 +103,20 @@ class TranscriptView {
 
     const visible = messages.filter((msg) => this.showSidechain || !msg.isSidechain);
 
+    const prevSession = this.onNavigate(session, 'prev');
+    const nextSession = this.onNavigate(session, 'next');
+
     const header = `
       <header class="transcript-header">
-        <h2>${escapeHtml(session.title)}</h2>
+        <div class="transcript-title-row">
+          <button class="icon-btn" data-action="nav-prev" ${prevSession ? '' : 'disabled'} title="${prevSession ? 'Phiên trước cùng dự án' : 'Không có phiên trước'}">
+            ${window.icons.svg('chevron-up', { size: 13 })}
+          </button>
+          <button class="icon-btn" data-action="nav-next" ${nextSession ? '' : 'disabled'} title="${nextSession ? 'Phiên sau cùng dự án' : 'Không có phiên sau'}">
+            ${window.icons.svg('chevron-down', { size: 13 })}
+          </button>
+          <h2>${escapeHtml(session.title)}</h2>
+        </div>
         <div class="transcript-meta">
           <span title="Thư mục làm việc">${escapeHtml(session.cwd || 'không rõ thư mục')}</span>
           <span>${escapeHtml(formatDateTime(session.startedAt))} → ${escapeHtml(formatDateTime(session.endedAt))}</span>
@@ -141,6 +156,11 @@ class TranscriptView {
     this._buildOutline(visible);
   }
 
+  _navigateTo(session) {
+    this.load(session, null);
+    this.onSessionNavigated(session);
+  }
+
   _renderMessage(msg, index) {
     const { escapeHtml, formatDateTime } = window.formatUtils;
 
@@ -161,6 +181,9 @@ class TranscriptView {
           ${msg.isSidechain ? '<span class="pill pill-muted">subagent</span>' : ''}
           ${msg.model ? `<span class="pill pill-muted">${escapeHtml(msg.model)}</span>` : ''}
           <time>${escapeHtml(formatDateTime(msg.timestamp))}</time>
+          <button class="icon-btn message-copy" data-copy-index="${index}" title="Sao chép tin nhắn này">
+            ${window.icons.svg('copy', { size: 12 })}
+          </button>
         </div>
         <div class="message-body">${blocks}</div>
       </article>`;
@@ -277,6 +300,16 @@ class TranscriptView {
       this.onResume(session);
     });
 
+    this.container.querySelector('[data-action="nav-prev"]')?.addEventListener('click', () => {
+      const target = this.onNavigate(session, 'prev');
+      if (target) this._navigateTo(target);
+    });
+
+    this.container.querySelector('[data-action="nav-next"]')?.addEventListener('click', () => {
+      const target = this.onNavigate(session, 'next');
+      if (target) this._navigateTo(target);
+    });
+
     this.container.querySelector('[data-action="reveal"]')?.addEventListener('click', () => {
       window.api.history.revealFile(session.filePath);
     });
@@ -294,6 +327,21 @@ class TranscriptView {
       this.showSidechain = event.target.checked;
       this.render();
     });
+
+    for (const button of this.container.querySelectorAll('[data-copy-index]')) {
+      button.addEventListener('click', async () => {
+        const visible = this.data.messages.filter((msg) => this.showSidechain || !msg.isSidechain);
+        const msg = visible[Number(button.dataset.copyIndex)];
+        if (!msg) return;
+        const text = msg.blocks
+          .filter((b) => this.showToolBlocks || (b.kind !== 'tool_use' && b.kind !== 'tool_result'))
+          .map((b) => b.text || '')
+          .join('\n\n');
+        await window.api.clipboard.writeText(text);
+        button.classList.add('is-copied');
+        setTimeout(() => button.classList.remove('is-copied'), 1200);
+      });
+    }
 
     this.container.querySelector('[data-action="star"]')?.addEventListener('click', async () => {
       const next = !this.currentNote?.starred;

@@ -34,6 +34,20 @@ const ICON_PATHS = {
   diamond:
     '<rect x="3" y="3" width="10" height="10" rx="2" transform="rotate(45 8 8)"/><path d="M6.2 5v6M6.2 8l2.6-3M6.2 8l2.6 3"/>',
   bolt: '<path d="M9 1.5 3.5 9h3.2L6 14.5 12.5 7H9.3L9 1.5Z"/>',
+  camera:
+    '<path d="M2 5.5a1 1 0 0 1 1-1h1.8l.9-1.4h4.6l.9 1.4H13a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7Z"/><circle cx="8" cy="9" r="2.6"/>',
+  copy: '<rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/><path d="M3.5 10.5H2.8a1 1 0 0 1-1-1V2.8a1 1 0 0 1 1-1h6.7a1 1 0 0 1 1 1v.7"/>',
+  server:
+    '<rect x="2" y="2.5" width="12" height="4.6" rx="1.2"/><rect x="2" y="8.9" width="12" height="4.6" rx="1.2"/><circle cx="4.6" cy="4.8" r="0.9" fill="currentColor" stroke="none"/><circle cx="4.6" cy="11.2" r="0.9" fill="currentColor" stroke="none"/>',
+  key: '<circle cx="5.2" cy="10.8" r="2.7"/><path d="M7.1 8.9 12.5 3.5l1.2 1.2M11 5l1.4 1.4"/>',
+  'git-branch':
+    '<circle cx="4.2" cy="3.5" r="1.8"/><circle cx="4.2" cy="12.5" r="1.8"/><circle cx="11.8" cy="6.5" r="1.8"/><path d="M4.2 5.3v5.4M4.2 8a4 4 0 0 0 4-4h1.8"/>',
+  broadcast:
+    '<circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none"/><path d="M5.3 5.3a3.8 3.8 0 0 0 0 5.4M10.7 5.3a3.8 3.8 0 0 1 0 5.4M3 3a7.6 7.6 0 0 0 0 10M13 3a7.6 7.6 0 0 1 0 10"/>',
+  layers:
+    '<path d="M8 2 2.5 5.2 8 8.4l5.5-3.2Z"/><path d="M2.5 8 8 11.2 13.5 8"/><path d="M2.5 10.8 8 14l5.5-3.2"/>',
+  sftp: '<path d="M2 5.5a1 1 0 0 1 1-1h3.2l1.3 1.5H13a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-6.5Z"/><path d="M8 7v4M6.2 9.2 8 11l1.8-1.8"/>',
+  book: '<path d="M2.5 3.2c1.6-.6 3.5-.6 5 0v9.6c-1.5-.6-3.4-.6-5 0Z"/><path d="M13.5 3.2c-1.6-.6-3.5-.6-5 0v9.6c1.5-.6 3.4-.6 5 0Z"/>',
 };
 
 /** Tra ve chuoi <svg> markup. Noi dung tu ta viet, dang tin cay de dat thang vao innerHTML. */

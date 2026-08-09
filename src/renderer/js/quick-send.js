@@ -26,20 +26,29 @@ const MODEL_CHOICES = [
   { label: 'default', command: '/model default' },
 ];
 
-/** Nut go nhanh mac dinh. Nguoi dung sua duoc, luu trong settings. */
-const DEFAULT_QUICK_ITEMS = ['tiếp tục', 'ok', '/compact', 'lỗi'];
+/**
+ * Nut go nhanh mac dinh. Nguoi dung sua duoc, luu trong settings.
+ * "tiếp" la bien the rieng cua "tiếp tục" - do tren 3.810 prompt that ca hai
+ * deu la cau hay go lai (149 va 81 lan), nhung truoc day chi "tiếp tục" co nut.
+ */
+const DEFAULT_QUICK_ITEMS = ['tiếp tục', 'tiếp', 'ok', '/compact', 'lỗi'];
 
 class QuickSend {
-  constructor({ quickBarElement, modelButton, modelLabel, getActivePane, onNeedTerminal }) {
+  constructor({ quickBarElement, sshQuickBarElement, modelButton, modelLabel, getActivePane, onNeedTerminal }) {
     this.quickBar = quickBarElement;
+    this.sshBar = sshQuickBarElement || null;
     this.modelButton = modelButton;
     this.modelLabel = modelLabel;
     this.getActivePane = getActivePane;
     this.onNeedTerminal = onNeedTerminal || (() => {});
 
     this.items = [...DEFAULT_QUICK_ITEMS];
+    /** Thu vien prompt: { id, group, text } - text co the chua {{cwd}}/{{branch}}/{{date}}. */
+    this.library = [];
     /** cwd -> nhan model da chon lan cuoi o du an do. */
     this.modelByCwd = {};
+    // Tang moi lan doi tab, tranh phan hoi ssh.list() cham cua tab cu ghi de tab moi.
+    this._sshBarSeq = 0;
 
     this.modelButton.addEventListener('click', () => this._openModelMenu());
   }
@@ -49,6 +58,7 @@ class QuickSend {
     if (Array.isArray(prefs.quickItems) && prefs.quickItems.length) {
       this.items = prefs.quickItems;
     }
+    this.library = Array.isArray(prefs.promptLibrary) ? prefs.promptLibrary : [];
     this.modelByCwd = prefs.modelByCwd && typeof prefs.modelByCwd === 'object' ? prefs.modelByCwd : {};
     this.renderQuickBar();
     this.refreshModelLabel();
@@ -77,12 +87,18 @@ class QuickSend {
     const { escapeHtml } = window.formatUtils;
 
     this.quickBar.innerHTML = `
+      <button class="quick-chip quick-chip-icon" data-action="screenshot" title="Chụp màn hình rồi dán vào terminal">
+        ${window.icons.svg('camera', { size: 13 })}
+      </button>
       ${this.items
         .map(
           (text, index) =>
             `<button class="quick-chip" data-index="${index}" title="Gõ &quot;${escapeHtml(text)}&quot; xuống terminal">${escapeHtml(text)}</button>`,
         )
         .join('')}
+      <button class="quick-chip quick-chip-icon" data-action="library" title="Thư viện prompt">
+        ${window.icons.svg('book', { size: 13 })}
+      </button>
       <button class="quick-chip quick-chip-edit" data-action="edit" title="Sửa danh sách nút gõ nhanh">
         ${window.icons.svg('pencil', { size: 12 })}
       </button>`;
@@ -95,28 +111,294 @@ class QuickSend {
 
     this.quickBar
       .querySelector('[data-action="edit"]')
-      ?.addEventListener('click', () => this._editItems());
+      ?.addEventListener('click', (event) => this._editItems(event.currentTarget));
+
+    this.quickBar
+      .querySelector('[data-action="screenshot"]')
+      ?.addEventListener('click', (event) => this._captureScreenshot(event.currentTarget));
+
+    this.quickBar
+      .querySelector('[data-action="library"]')
+      ?.addEventListener('click', (event) => this._openLibrary(event.currentTarget));
   }
 
-  _editItems() {
-    // Danh sach ngan, sua bang mot o nhap la du - khong dang dung mot hop thoai
-    // rieng cho viec nay.
-    const current = this.items.join('\n');
-    const next = window.prompt(
-      'Mỗi dòng là một nút gõ nhanh. Xoá hết để quay lại mặc định.',
-      current,
-    );
-    if (next === null) return;
+  // --- Hang lenh nhanh rieng cho tab SSH -------------------------------------
 
-    const parsed = next
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, 10);
+  /** Goi khi doi tab/pane - hien lenh nhanh cua may chu neu pane dang mo la ssh va co luu san. */
+  async refreshSshBar() {
+    if (!this.sshBar) return;
+    const seq = ++this._sshBarSeq;
+    const pane = this.getActivePane();
 
-    this.items = parsed.length ? parsed : [...DEFAULT_QUICK_ITEMS];
-    window.api.prefs.set({ quickItems: this.items });
-    this.renderQuickBar();
+    if (!pane || pane.sessionType !== 'ssh' || !pane.sshHostId) {
+      this.sshBar.classList.add('is-hidden');
+      return;
+    }
+
+    const hosts = await window.api.ssh.list();
+    if (seq !== this._sshBarSeq) return;
+
+    const host = hosts.find((h) => h.id === pane.sshHostId);
+    if (!host?.commands?.length) {
+      this.sshBar.classList.add('is-hidden');
+      return;
+    }
+
+    const { escapeHtml } = window.formatUtils;
+    this.sshBar.classList.remove('is-hidden');
+    this.sshBar.innerHTML = host.commands
+      .map(
+        (c) =>
+          `<button class="quick-chip quick-chip-ssh" data-cmd="${escapeHtml(c.cmd)}" title="${escapeHtml(c.cmd)}">${escapeHtml(c.label)}</button>`,
+      )
+      .join('');
+
+    for (const button of this.sshBar.querySelectorAll('[data-cmd]')) {
+      button.addEventListener('click', () => this.sendToActivePane(button.dataset.cmd));
+    }
+  }
+
+  // --- Thu vien prompt ---------------------------------------------------------
+
+  /**
+   * Chen (khong tu gui Enter) mot prompt tu thu vien, thay cac bien co san
+   * bang gia tri thuc te cua pane dang lam viec.
+   */
+  async _insertLibraryItem(item) {
+    const pane = this.getActivePane();
+    if (!pane) return;
+
+    let text = item.text;
+    if (text.includes('{{cwd}}')) {
+      text = text.replaceAll('{{cwd}}', window.formatUtils.baseName(pane.cwd) || '');
+    }
+    if (text.includes('{{date}}')) {
+      text = text.replaceAll('{{date}}', new Date().toLocaleDateString('vi-VN'));
+    }
+    if (text.includes('{{branch}}')) {
+      const branch = await window.api.git.branch(pane.cwd);
+      text = text.replaceAll('{{branch}}', branch || '');
+    }
+    this.sendToActivePane(text, { submit: false });
+  }
+
+  _openLibrary(anchor) {
+    const existing = document.querySelector('.prompt-library-menu');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    const { escapeHtml } = window.formatUtils;
+    const menu = document.createElement('div');
+    menu.className = 'account-menu prompt-library-menu';
+    menu.innerHTML = `
+      <div class="account-key">Thư viện prompt</div>
+      <input class="field-input prompt-library-search" placeholder="Tìm..." />
+      <div class="prompt-library-list"></div>
+      <div class="usage-note">Biến dùng được: {{cwd}}, {{branch}}, {{date}}. Bấm để chèn (không tự gửi).</div>
+      <button class="btn btn-ghost" data-action="add-prompt">+ Thêm prompt</button>
+      <div class="prompt-library-add is-hidden">
+        <input class="field-input prompt-add-group" placeholder="Nhóm (tuỳ chọn)" />
+        <textarea class="quick-edit-textarea prompt-add-text" rows="3" placeholder="Nội dung prompt..."></textarea>
+        <div class="quick-edit-actions">
+          <button class="btn" data-action="cancel-add">Huỷ</button>
+          <button class="btn btn-primary" data-action="save-add">Lưu</button>
+        </div>
+      </div>`;
+    document.body.append(menu);
+
+    const rect = anchor.getBoundingClientRect();
+    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+    menu.style.top = `${rect.bottom + 6}px`;
+
+    const listEl = menu.querySelector('.prompt-library-list');
+    const renderList = (query = '') => {
+      const q = query.trim().toLowerCase();
+      const filtered = this.library.filter(
+        (item) => !q || item.text.toLowerCase().includes(q) || item.group.toLowerCase().includes(q),
+      );
+      listEl.innerHTML = filtered.length
+        ? filtered
+            .map(
+              (item) => `
+          <div class="prompt-library-row" data-id="${escapeHtml(item.id)}">
+            ${item.group ? `<span class="prompt-library-group">${escapeHtml(item.group)}</span>` : ''}
+            <button class="prompt-library-text" data-act="insert">${escapeHtml(item.text)}</button>
+            <button class="icon-btn" data-act="delete" title="Xoá">${window.icons.svg('x', { size: 12 })}</button>
+          </div>`,
+            )
+            .join('')
+        : `<div class="sidebar-empty">Chưa có prompt nào.</div>`;
+
+      listEl.querySelectorAll('[data-act="insert"]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const item = this.library.find((i) => i.id === button.closest('[data-id]').dataset.id);
+          if (item) this._insertLibraryItem(item);
+        });
+      });
+      listEl.querySelectorAll('[data-act="delete"]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const id = button.closest('[data-id]').dataset.id;
+          this.library = this.library.filter((i) => i.id !== id);
+          await window.api.prefs.set({ promptLibrary: this.library });
+          renderList(searchInput.value);
+        });
+      });
+    };
+
+    const searchInput = menu.querySelector('.prompt-library-search');
+    searchInput.addEventListener('input', () => renderList(searchInput.value));
+    renderList();
+    searchInput.focus();
+
+    const addPanel = menu.querySelector('.prompt-library-add');
+    menu.querySelector('[data-action="add-prompt"]').addEventListener('click', () => {
+      addPanel.classList.remove('is-hidden');
+      addPanel.querySelector('.prompt-add-text').focus();
+    });
+    menu.querySelector('[data-action="cancel-add"]').addEventListener('click', () => {
+      addPanel.classList.add('is-hidden');
+    });
+    menu.querySelector('[data-action="save-add"]').addEventListener('click', async () => {
+      const text = addPanel.querySelector('.prompt-add-text').value.trim();
+      if (!text) return;
+      const group = addPanel.querySelector('.prompt-add-group').value.trim();
+      this.library.push({ id: crypto.randomUUID(), group, text });
+      await window.api.prefs.set({ promptLibrary: this.library });
+      addPanel.classList.add('is-hidden');
+      addPanel.querySelector('.prompt-add-text').value = '';
+      addPanel.querySelector('.prompt-add-group').value = '';
+      renderList(searchInput.value);
+    });
+
+    const closeOnOutside = (event) => {
+      if (menu.contains(event.target) || anchor.contains(event.target)) return;
+      menu.remove();
+      document.removeEventListener('mousedown', closeOnOutside, true);
+    };
+    setTimeout(() => document.addEventListener('mousedown', closeOnOutside, true), 0);
+  }
+
+  /**
+   * Chup man hinh bang cong cu goc cua Windows (Win+Shift+S) roi tu dan
+   * duong dan anh vao terminal - danh cho 592/3810 prompt that co dan anh
+   * (15,5%), phan lon la anh chup man hinh dan tu clipboard co san.
+   */
+  async _captureScreenshot(button) {
+    if (button.classList.contains('is-waiting')) return;
+
+    const pane = this.getActivePane();
+    if (!pane) return;
+
+    button.classList.add('is-waiting');
+    const originalTitle = button.title;
+    button.title = 'Đang chờ bạn chọn vùng chụp trên màn hình (Esc để huỷ)...';
+
+    try {
+      const result = await window.api.clipboard.captureScreenshot();
+      if (!result) return;
+
+      this.onNeedTerminal();
+      const quoted = /\s/.test(result.filePath) ? `"${result.filePath}"` : result.filePath;
+      window.api.pty.write(pane.id, quoted);
+      requestAnimationFrame(() => pane.term.focus());
+      this._showScreenshotPreview(button, result.dataUrl);
+    } finally {
+      button.classList.remove('is-waiting');
+      button.title = originalTitle;
+    }
+  }
+
+  /** The nho xem truoc anh vua chup, tu bien mat sau vai giay - xac nhan dung anh da dan. */
+  _showScreenshotPreview(anchor, dataUrl) {
+    document.querySelector('.screenshot-preview')?.remove();
+
+    const card = document.createElement('div');
+    card.className = 'screenshot-preview';
+    card.innerHTML = `
+      <img src="${dataUrl}" alt="Ảnh vừa chụp" />
+      <span>Đã dán ảnh vào terminal</span>`;
+    document.body.append(card);
+
+    // Nut camera nam gan dinh man hinh - moc xuong duoi, khong moc len tren
+    // (xem ghi chu tuong tu o _editItems).
+    const rect = anchor.getBoundingClientRect();
+    card.style.left = `${Math.max(8, rect.left)}px`;
+    card.style.top = `${rect.bottom + 8}px`;
+
+    card.addEventListener('click', () => card.remove());
+    setTimeout(() => card.remove(), 4000);
+  }
+
+  /**
+   * `window.prompt()` khong duoc Electron ho tro (bi chan mac dinh, bam nut
+   * sua truoc day chi bao loi im lang trong console) - dung mot menu noi
+   * dung textarea, giong cach `.account-menu`/`.model-menu` da lam.
+   */
+  _editItems(anchor) {
+    const existing = document.querySelector('.quick-edit-menu');
+    if (existing) {
+      existing.remove();
+      return;
+    }
+
+    const { escapeHtml } = window.formatUtils;
+    const menu = document.createElement('div');
+    menu.className = 'account-menu quick-edit-menu';
+    menu.innerHTML = `
+      <div class="account-key">Sửa nút gõ nhanh</div>
+      <textarea class="quick-edit-textarea" rows="6">${escapeHtml(this.items.join('\n'))}</textarea>
+      <div class="usage-note">Mỗi dòng một nút, tối đa 10 nút. Xoá hết để quay lại mặc định.</div>
+      <div class="quick-edit-actions">
+        <button class="btn" data-action="cancel">Huỷ</button>
+        <button class="btn btn-primary" data-action="save">Lưu</button>
+      </div>`;
+    document.body.append(menu);
+
+    // Nut sua nam gan dinh man hinh (hang go nhanh o tren cung terminal),
+    // khac voi nut tai khoan/model o thanh trang thai duoi cung - phai moc
+    // XUONG duoi nut thay vi moc len tren nhu .account-menu/.model-menu,
+    // neu khong menu se bi day ra ngoai mep tren.
+    const rect = anchor.getBoundingClientRect();
+    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+    menu.style.top = `${rect.bottom + 6}px`;
+
+    const textarea = menu.querySelector('.quick-edit-textarea');
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+    menu.querySelector('[data-action="cancel"]').addEventListener('click', () => menu.remove());
+
+    menu.querySelector('[data-action="save"]').addEventListener('click', () => {
+      const parsed = textarea.value
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 10);
+
+      this.items = parsed.length ? parsed : [...DEFAULT_QUICK_ITEMS];
+      window.api.prefs.set({ quickItems: this.items });
+      this.renderQuickBar();
+      menu.remove();
+    });
+
+    // Enter luu, Shift+Enter xuong dong - khop thoi quen go textarea thong thuong.
+    textarea.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        menu.querySelector('[data-action="save"]').click();
+      } else if (event.key === 'Escape') {
+        menu.remove();
+      }
+    });
+
+    const closeOnOutside = (event) => {
+      if (menu.contains(event.target) || anchor.contains(event.target)) return;
+      menu.remove();
+      document.removeEventListener('mousedown', closeOnOutside, true);
+    };
+    setTimeout(() => document.addEventListener('mousedown', closeOnOutside, true), 0);
   }
 
   // --- Doi model -----------------------------------------------------------

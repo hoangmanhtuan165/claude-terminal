@@ -9,35 +9,11 @@
 
 const MAX_PER_GROUP = 6;
 
-/**
- * Khớp mờ kiểu "gõ tắt": các ký tự của từ khoá phải xuất hiện đúng thứ tự
- * nhưng không cần liền nhau, nên `qlt` khớp `quản lý terminal`.
- * Điểm cao hơn khi khớp liền mạch và khi khớp sớm trong chuỗi.
- */
-function fuzzyScore(text, query) {
-  if (!query) return 0;
-
-  const haystack = text.toLowerCase();
-  const needle = query.toLowerCase();
-
-  if (haystack.includes(needle)) {
-    // Khớp nguyên cụm luôn hơn khớp rời rạc.
-    return 1000 - haystack.indexOf(needle);
-  }
-
-  let score = 0;
-  let at = -1;
-  let streak = 0;
-
-  for (const char of needle) {
-    const found = haystack.indexOf(char, at + 1);
-    if (found === -1) return -1;
-    streak = found === at + 1 ? streak + 1 : 0;
-    score += 10 + streak * 5;
-    at = found;
-  }
-  return score;
-}
+// fuzzyScore dung chung o window.formatUtils (sidebar du an cung dung lai ham
+// nay). Goi thang qua window.formatUtils thay vi tao alias top-level trung
+// ten - format-utils.js khai bao `function fuzzyScore` o top-level, dung
+// `const fuzzyScore` cung ten o file khac se bao loi "already been declared"
+// vi ca hai chia se cung mot global lexical scope giua cac <script> classic.
 
 class CommandPalette {
   constructor({ root, actions }) {
@@ -117,6 +93,7 @@ class CommandPalette {
       return [...byGroup.values()].flat();
     }
 
+    const { fuzzyScore } = window.formatUtils;
     return this.allItems
       .map((item) => ({ item, score: Math.max(fuzzyScore(item.title, query), fuzzyScore(item.sub, query) - 200) }))
       .filter((entry) => entry.score > 0)

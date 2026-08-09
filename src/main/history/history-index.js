@@ -2,11 +2,13 @@
 
 const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
+const readline = require('node:readline');
 const path = require('node:path');
 const { claudeProjectsDir, historyIndexPath } = require('../app-paths');
 const { readJson, writeJson } = require('../storage/json-store');
 const parser = require('./transcript-parser');
 const contentCache = require('./content-cache');
+const { costOf } = require('../usage/usage-local');
 
 /**
  * Xay va cache metadata cua toan bo transcript Claude Code.
@@ -18,8 +20,9 @@ const contentCache = require('./content-cache');
  */
 
 // Tang so nay khi cau truc metadata doi. Chi metadata bi doc lai (nhanh, chi
-// doc dau/cuoi moi file); cache noi dung khong bi anh huong.
-const INDEX_VERSION = 4;
+// doc dau/cuoi moi file, tru totalTokens/costUsd/hasError phai doc ca file -
+// xem sumUsage); cache noi dung khong bi anh huong.
+const INDEX_VERSION = 6;
 const HEAD_BYTES = 192 * 1024;
 const TAIL_BYTES = 64 * 1024;
 
@@ -57,6 +60,52 @@ async function findSubagentFiles(filePath) {
     // Phan lon phien khong dung subagent nen khong co thu muc nay.
     return [];
   }
+}
+
+/**
+ * Cong don token/chi phi cua ca phien - PHAI doc toan bo file (khac voi
+ * extractMetadata chi doc dau/cuoi), vi usage nam rai rac o moi luot tra loi
+ * chu khong chi dau/cuoi. Doc theo dong qua stream de khong nap ca file (co
+ * phien toi 220MB) vao bo nho.
+ *
+ * Tien the phat hien "phien co loi" (tool_result.is_error) trong cung mot
+ * luot doc - them mot lan quet rieng cho ca file se ton gap doi I/O vo ich.
+ *
+ * Ton chi phi hon cac truong metadata khac, nhung chi chay khi phien MOI hoac
+ * thay doi (xem cho goi trong extractMetadata/refresh) - sau do ket qua duoc
+ * cache vinh vien trong history-index.json giong moi truong khac.
+ */
+function sumUsage(filePath) {
+  return new Promise((resolve) => {
+    let totalTokens = 0;
+    let costUsd = 0;
+    let hasError = false;
+
+    const stream = fsSync.createReadStream(filePath, { encoding: 'utf8' });
+    const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+
+    rl.on('line', (line) => {
+      if (!line) return;
+      if (!hasError && line.includes('"is_error":true')) hasError = true;
+      if (!line.includes('"type":"assistant"')) return;
+      try {
+        const record = JSON.parse(line);
+        const usage = record?.message?.usage;
+        if (!usage) return;
+        totalTokens +=
+          (usage.input_tokens || 0) +
+          (usage.output_tokens || 0) +
+          (usage.cache_creation_input_tokens || 0) +
+          (usage.cache_read_input_tokens || 0);
+        costUsd += costOf(record.message.model, usage);
+      } catch {
+        // Dong hong - bo qua.
+      }
+    });
+
+    rl.on('close', () => resolve({ totalTokens, costUsd, hasError }));
+    stream.on('error', () => resolve({ totalTokens, costUsd, hasError }));
+  });
 }
 
 /**
@@ -114,6 +163,11 @@ async function extractMetadata(filePath, stat) {
   delete meta.fallbackTitle;
 
   meta.subagentFiles = await findSubagentFiles(filePath);
+
+  const usage = await sumUsage(filePath);
+  meta.totalTokens = usage.totalTokens;
+  meta.costUsd = usage.costUsd;
+  meta.hasError = usage.hasError;
 
   return meta;
 }
@@ -268,13 +322,25 @@ function listSessions() {
   );
 }
 
-/** Gom phien theo thu muc lam viec, dung cho sidebar du an. */
+/**
+ * Gom phien theo thu muc lam viec, dung cho sidebar du an.
+ *
+ * Key gom nhom phai la cwd DA HA CHU, khong phai cwd goc: o dia Windows khong
+ * phan biet hoa/thuong (`F:\...` va `f:\...` la cung mot thu muc), nhung Claude
+ * Code ghi lai cwd nguyen van tung lan goi - hai lan chay cung du an co the ra
+ * hai chuoi khac nhau chi vi chu hoa/thuong o dia, tach dinh mot du an thanh
+ * hai dong rieng trong sidebar (do duoc tren du lieu that: sheet.com.vn bi
+ * tach thanh 403 + 248 prompt). Van giu nguyen cwd GOC (khong ha chu) de hien
+ * thi/mo thu muc - cac cho loc theo cwd khac da tu ha chu ca hai ve khi so
+ * sanh nen khong bi anh huong.
+ */
 function listProjects() {
   const byCwd = new Map();
 
   for (const session of listSessions()) {
     const cwd = session.cwd || '(không rõ thư mục)';
-    let project = byCwd.get(cwd);
+    const key = cwd.toLowerCase();
+    let project = byCwd.get(key);
     if (!project) {
       // 80 du an, moi existsSync duoi 0.1ms - do that tren may thi tong chua
       // toi 3ms, khong dang phai lam bat dong bo. Du an "khong ro thu muc" thi
@@ -285,14 +351,21 @@ function listProjects() {
         name: path.basename(cwd) || cwd,
         sessionCount: 0,
         lastUsedAt: null,
+        // listSessions() tra ve moi nhat truoc, nen phien dau tien gap cho moi
+        // cwd chinh la phien gan nhat - dung de sidebar "no tiep" thang.
+        lastSessionId: session.sessionId,
         exists,
+        totalTokens: 0,
+        costUsd: 0,
       };
-      byCwd.set(cwd, project);
+      byCwd.set(key, project);
     }
     project.sessionCount += 1;
     if (!project.lastUsedAt || String(session.endedAt) > String(project.lastUsedAt)) {
       project.lastUsedAt = session.endedAt;
     }
+    project.totalTokens += session.totalTokens || 0;
+    project.costUsd += session.costUsd || 0;
   }
 
   return [...byCwd.values()].sort((a, b) =>
@@ -304,4 +377,137 @@ function findSession(sessionId) {
   return listSessions().find((session) => session.sessionId === sessionId) || null;
 }
 
-module.exports = { refresh, listSessions, listProjects, findSession };
+/**
+ * Dung luong tong toan bo transcript da index - cong don `sizeBytes` da co
+ * san trong cache, khong doc lai dia. Dung de canh bao khi thu muc lich su
+ * phinh to (xem history-panel.js).
+ */
+function getStorageStats() {
+  const sessions = listSessions();
+  const totalBytes = sessions.reduce((sum, s) => sum + (s.sizeBytes || 0), 0);
+  const largest = sessions.reduce((max, s) => Math.max(max, s.sizeBytes || 0), 0);
+  return { totalBytes, sessionCount: sessions.length, largestBytes: largest };
+}
+
+/**
+ * Cac phien CU NHAT (theo endedAt) se bi xoa neu bam "Xoa bot" - chi de
+ * XEM TRUOC (khong xoa gi ca), dung cho hop thoai xac nhan hien du bao nhieu
+ * phien/dung luong se mat truoc khi nguoi dung dong y that.
+ *
+ * `targetFreeBytes`: muon giai phong toi thieu bao nhieu byte - gom du phien cu
+ * nhat cho toi khi tong dung luong cua chung dat nguong nay.
+ */
+function previewOldestSessions(targetFreeBytes) {
+  const sessions = [...listSessions()].sort((a, b) =>
+    String(a.endedAt || '').localeCompare(String(b.endedAt || '')),
+  );
+
+  const picked = [];
+  let freed = 0;
+  for (const session of sessions) {
+    if (freed >= targetFreeBytes) break;
+    picked.push(session);
+    freed += session.sizeBytes || 0;
+  }
+  return { sessions: picked, freedBytes: freed };
+}
+
+/**
+ * Xoa hang loat cac phien CU NHAT cho toi khi giai phong du `targetFreeBytes`.
+ * Xoa that su tren dia: file .jsonl goc + thu muc subagent di kem - KHONG THE
+ * HOAN TAC. Loi goi phai tu xac nhan voi nguoi dung truoc (xem previewOldestSessions).
+ *
+ * Sau khi xoa, ghi lai index tu bo nho (khong doc lai dia) de tranh mot vong
+ * quet day; contentCache.pruneOrphans() don not cache thua tuong ung.
+ */
+function deleteOldestSessions(targetFreeBytes) {
+  const { sessions: toDelete } = previewOldestSessions(targetFreeBytes);
+  const cache = loadCache();
+  let deletedCount = 0;
+  let freedBytes = 0;
+
+  for (const session of toDelete) {
+    try {
+      fsSync.unlinkSync(session.filePath);
+    } catch {
+      continue; // File da mat hoac dang khoa - bo qua, khong tinh vao da xoa.
+    }
+
+    // Thu muc subagent nam canh file .jsonl: <thu-muc>/<session-id>/subagents/.
+    const sessionDir = path.join(path.dirname(session.filePath), session.sessionId);
+    try {
+      fsSync.rmSync(sessionDir, { recursive: true, force: true });
+    } catch {
+      // Khong co thu muc subagent - binh thuong, phan lon phien khong dung.
+    }
+
+    delete cache.sessions[session.filePath];
+    deletedCount += 1;
+    freedBytes += session.sizeBytes || 0;
+  }
+
+  writeJson(historyIndexPath(), { version: INDEX_VERSION, sessions: cache.sessions });
+  contentCache.pruneOrphans(Object.values(cache.sessions).map((s) => s.sessionId));
+
+  return { deletedCount, freedBytes };
+}
+
+/**
+ * Tong hop so lieu cho man hinh Thong ke - tat ca deu suy tu du lieu da co
+ * san trong cache (sessions/projects), khong doc them dia.
+ */
+function getUsageStats() {
+  const sessions = listSessions();
+  const projects = listProjects();
+
+  let totalTokens = 0;
+  let totalCostUsd = 0;
+  let errorSessions = 0;
+  const byDay = new Map(); // 'YYYY-MM-DD' -> { tokens, costUsd, sessionCount }
+
+  for (const session of sessions) {
+    totalTokens += session.totalTokens || 0;
+    totalCostUsd += session.costUsd || 0;
+    if (session.hasError) errorSessions += 1;
+
+    const day = String(session.endedAt || '').slice(0, 10);
+    if (!day) continue;
+    let bucket = byDay.get(day);
+    if (!bucket) {
+      bucket = { day, tokens: 0, costUsd: 0, sessionCount: 0 };
+      byDay.set(day, bucket);
+    }
+    bucket.tokens += session.totalTokens || 0;
+    bucket.costUsd += session.costUsd || 0;
+    bucket.sessionCount += 1;
+  }
+
+  // 30 ngay gan nhat, sap theo ngay tang dan de ve bieu do tu trai qua phai.
+  const daily = [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day)).slice(-30);
+
+  const topProjects = [...projects]
+    .sort((a, b) => (b.totalTokens || 0) - (a.totalTokens || 0))
+    .slice(0, 10)
+    .map((p) => ({ name: p.name, cwd: p.cwd, totalTokens: p.totalTokens, costUsd: p.costUsd, sessionCount: p.sessionCount }));
+
+  return {
+    sessionCount: sessions.length,
+    projectCount: projects.length,
+    totalTokens,
+    totalCostUsd,
+    errorSessions,
+    daily,
+    topProjects,
+  };
+}
+
+module.exports = {
+  refresh,
+  listSessions,
+  listProjects,
+  findSession,
+  getStorageStats,
+  getUsageStats,
+  previewOldestSessions,
+  deleteOldestSessions,
+};

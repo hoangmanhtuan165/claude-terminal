@@ -26,6 +26,18 @@
 
         <div id="tab-strip" class="tab-strip"></div>
 
+        <button id="btn-tab-list" class="icon-btn" title="Danh sách tab">
+          <span data-icon="chevron-down"></span>
+        </button>
+
+        <button id="btn-workspaces" class="icon-btn" title="Không gian làm việc đã lưu">
+          <span data-icon="layers"></span>
+        </button>
+
+        <button id="btn-broadcast" class="icon-btn" title="Gửi lệnh đồng thời tới nhiều tab SSH">
+          <span data-icon="broadcast"></span>
+        </button>
+
         <button id="btn-new-claude" class="icon-btn" title="Tab Claude mới (Ctrl+T)">
           <span data-icon="plus"></span>
         </button>
@@ -37,6 +49,9 @@
           <button id="nav-history" class="icon-btn" title="Lịch sử (Ctrl+H)">
             <span data-icon="clock"></span>
           </button>
+          <button id="nav-stats" class="icon-btn" title="Thống kê">
+            <span data-icon="gauge"></span>
+          </button>
           <button id="btn-theme" class="icon-btn" title="Đổi sáng/tối">
             <span data-icon="contrast"></span>
           </button>
@@ -45,7 +60,12 @@
 
       <div class="workspace">
         <aside class="sidebar">
+          <div class="sidebar-tabs">
+            <button id="sidebar-tab-projects" class="sidebar-tab is-active">Dự án</button>
+            <button id="sidebar-tab-ssh" class="sidebar-tab">Máy chủ</button>
+          </div>
           <div id="projects-sidebar" class="sidebar-scroll"></div>
+          <div id="ssh-sidebar" class="sidebar-scroll is-hidden"></div>
         </aside>
 
         <main class="content">
@@ -57,12 +77,16 @@
               hơn 270 lần gõ lại đúng vài chữ.
             -->
             <div id="quick-bar" class="quick-bar"></div>
+            <div id="quick-bar-ssh" class="quick-bar quick-bar-ssh is-hidden"></div>
 
             <div id="terminal-pane" class="terminal-pane">
               <!-- Tìm trong terminal, hiện bằng Ctrl+F -->
               <div id="term-find" class="term-find is-hidden">
                 <input id="term-find-input" type="text" placeholder="Tìm trong terminal..." />
                 <span id="term-find-count" class="term-find-count"></span>
+                <button id="term-find-all-toggle" class="icon-btn" title="Tìm trong tất cả tab đang mở">
+                  <span data-icon="layers"></span>
+                </button>
                 <button id="term-find-prev" class="icon-btn" title="Kết quả trước (Shift+Enter)">
                   <span data-icon="chevron-up"></span>
                 </button>
@@ -72,6 +96,7 @@
                 <button id="term-find-close" class="icon-btn" title="Đóng (Esc)">
                   <span data-icon="x"></span>
                 </button>
+                <div id="term-find-all-results" class="term-find-all-results is-hidden"></div>
               </div>
             </div>
           </section>
@@ -101,6 +126,8 @@
                     </button>
                   </div>
 
+                  <div id="storage-warning" class="storage-warning is-hidden"></div>
+
                   <div class="mode-row">
                     <div class="segmented">
                       <button class="segment is-active" data-mode="title" title="Lọc tức thời theo tiêu đề phiên">
@@ -129,6 +156,12 @@
                     >
                       <input id="hide-small-sessions" type="checkbox" /> Ẩn phiên vụn
                     </label>
+                    <label
+                      class="toggle"
+                      title="Chỉ hiện phiên có ít nhất một kết quả công cụ lỗi (tool_result is_error) - dùng để tìm lại lúc từng gặp sự cố."
+                    >
+                      <input id="only-error-sessions" type="checkbox" /> Chỉ phiên có lỗi
+                    </label>
                   </div>
 
                   <div id="history-status" class="history-status"></div>
@@ -143,6 +176,11 @@
                 <nav id="transcript-outline" class="transcript-outline is-hidden"></nav>
               </div>
             </div>
+          </section>
+
+          <!-- Màn hình thống kê -->
+          <section id="stats-screen" class="screen is-hidden">
+            <div id="stats-content" class="stats-content"></div>
           </section>
         </main>
       </div>
@@ -177,6 +215,14 @@
           <span class="status-icon" data-icon="gauge"></span>
           <span id="status-usage"></span>
         </button>
+        <button id="update-button" class="status-item status-button is-hidden" title="Có bản cập nhật mới">
+          <span class="status-icon" data-icon="download"></span>
+          <span id="status-update"></span>
+        </button>
+        <span class="status-item is-hidden">
+          <span class="status-icon" data-icon="git-branch"></span>
+          <span id="status-branch"></span>
+        </span>
         <span class="status-item">
           <span class="status-icon" data-icon="terminal-prompt"></span>
           <span id="status-shell"></span>
@@ -204,6 +250,10 @@
     <script src="js/transcript-view.js"></script>
     <script src="js/history-panel.js"></script>
     <script src="js/projects-sidebar.js"></script>
+    <script src="js/ssh-sidebar.js"></script>
+    <script src="js/sftp-browser.js"></script>
+    <script src="js/workspace-presets-panel.js"></script>
+    <script src="js/stats-panel.js"></script>
     <script src="js/quick-send.js"></script>
     <script src="js/account-panel.js"></script>
     <script src="js/command-palette.js"></script>

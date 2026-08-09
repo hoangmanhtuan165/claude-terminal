@@ -26,6 +26,13 @@ const MAX_LIST_ROWS = 400;
 const SMALL_SESSION_BYTES = 200 * 1024;
 
 /**
+ * Nguong dung luong tong thu muc transcript de canh bao. 1GB la moc thoai
+ * mai tren dia thong thuong nhung da du de dang ke - qua nguong nay moi dang
+ * hien banner, tranh lam phien khi con nho.
+ */
+const STORAGE_WARN_BYTES = 1024 * 1024 * 1024;
+
+/**
  * Mốc chia nhóm thời gian.
  * Đo trên dữ liệu thật: 17 phiên hôm nay, 60 trong 7 ngày, 73 trong 30 ngày —
  * chia theo ba mốc này cho ra các nhóm cỡ tương đương, dễ quét mắt.
@@ -83,6 +90,7 @@ class HistoryPanel {
     this.sessions = [];
     this.cwdFilter = null;
     this.hideSmallSessions = true;
+    this.onlyErrorSessions = false;
     /** sessionId -> { starred, note } */
     this.notes = {};
     this.searchMode = 'title';
@@ -141,6 +149,11 @@ class HistoryPanel {
     this.el.hideSmallCheckbox.addEventListener('change', () => {
       this.hideSmallSessions = this.el.hideSmallCheckbox.checked;
       window.api.prefs.set({ hideSmallSessions: this.hideSmallSessions });
+      this._rerun();
+    });
+
+    this.el.onlyErrorCheckbox?.addEventListener('change', () => {
+      this.onlyErrorSessions = this.el.onlyErrorCheckbox.checked;
       this._rerun();
     });
 
@@ -211,6 +224,47 @@ class HistoryPanel {
         ? `${result.total} phiên, đã rút gọn lại ${result.rescanned} phiên`
         : `${result.total} phiên, chỉ mục đã mới`,
     );
+    this._checkStorage();
+  }
+
+  /** Cảnh báo khi tổng dung lượng transcript vượt ngưỡng - xem STORAGE_WARN_BYTES. */
+  async _checkStorage() {
+    if (!this.el.storageWarning) return;
+    const stats = await window.api.history.storageStats();
+    if (stats.totalBytes < STORAGE_WARN_BYTES) {
+      this.el.storageWarning.classList.add('is-hidden');
+      return;
+    }
+    const { escapeHtml, formatBytes } = window.formatUtils;
+    this.el.storageWarning.classList.remove('is-hidden');
+    this.el.storageWarning.innerHTML = `
+      <span>Thư mục lịch sử đang chiếm ${escapeHtml(formatBytes(stats.totalBytes))} qua ${stats.sessionCount} phiên
+      (phiên lớn nhất ${escapeHtml(formatBytes(stats.largestBytes))}).</span>
+      <button class="btn btn-ghost" data-act="cleanup-oldest">Dọn phiên cũ nhất</button>`;
+
+    this.el.storageWarning
+      .querySelector('[data-act="cleanup-oldest"]')
+      ?.addEventListener('click', () => this._cleanupOldestSessions(stats));
+  }
+
+  /**
+   * Xoa vinh vien cac phien CU NHAT cho toi khi dung luong ve duoi nguong canh
+   * bao (co them bien an toan de khong bao lai ngay lap tuc). Hop thoai xac
+   * nhan that su do main process hien (xem history:cleanupOldest) - o day chi
+   * goi va ve lai ket qua, khong tu xac nhan lan hai de tranh phien nguoi dung.
+   */
+  async _cleanupOldestSessions(stats) {
+    // Xoa toi khi dung luong con lai bang 80% nguong canh bao, tranh vua don
+    // xong lai vuot nguong ngay o lan quet ke tiep.
+    const targetFreeBytes = stats.totalBytes - Math.floor(STORAGE_WARN_BYTES * 0.8);
+    if (targetFreeBytes <= 0) return;
+
+    const result = await window.api.history.cleanupOldest(targetFreeBytes);
+    if (result.cancelled || result.deletedCount === 0) return;
+
+    this.setStatus(`Đã xoá ${result.deletedCount} phiên cũ, giải phóng ${window.formatUtils.formatBytes(result.freedBytes)}.`);
+    await this.reload();
+    this._checkStorage();
   }
 
   async reload() {
@@ -280,6 +334,10 @@ class HistoryPanel {
           s.sessionId === this.selectedSessionId ||
           this.notes[s.sessionId],
       );
+    }
+
+    if (this.onlyErrorSessions) {
+      list = list.filter((s) => s.hasError);
     }
 
     if (this.searchMode === 'title') {
@@ -559,6 +617,39 @@ class HistoryPanel {
       row.classList.toggle('is-active', row.dataset.sessionId === session.sessionId);
     }
     this.transcriptView.load(session, this.notes[session.sessionId] || null);
+  }
+
+  /**
+   * Danh sach ben trai chi to sang lai hang tuong ung - dung khi transcript
+   * view da tu load() (vi du nut ‹ › dieu huong phien truoc/sau), tranh doc
+   * lai transcript hai lan.
+   */
+  syncSelection(session) {
+    this.selectedSessionId = session.sessionId;
+    for (const row of this.el.list.querySelectorAll('[data-session-id]')) {
+      row.classList.toggle('is-active', row.dataset.sessionId === session.sessionId);
+    }
+    // Phien vua nhay toi co the nam ngoai trang hien tai (MAX_LIST_ROWS) hoac
+    // dang o che do tim kiem toan van - ve lai de dam bao hang do thuc su
+    // xuat hien va duoc cuon toi.
+    if (this.searchMode !== 'fulltext') this.renderList();
+    this.el.list.querySelector(`[data-session-id="${session.sessionId}"]`)?.scrollIntoView({ block: 'nearest' });
+  }
+
+  /**
+   * Phien truoc/sau CUNG THU MUC theo thoi gian - dung cho nut ‹ › tren
+   * transcript. `this.sessions` da sap moi nhat truoc (xem listSessions).
+   */
+  adjacentSession(session, direction) {
+    if (!session.cwd) return null;
+    const siblings = this.sessions.filter(
+      (s) => String(s.cwd || '').toLowerCase() === String(session.cwd).toLowerCase(),
+    );
+    const index = siblings.findIndex((s) => s.sessionId === session.sessionId);
+    if (index === -1) return null;
+    // sessions moi nhat truoc: "sau" (gan hien tai hon) la index nho hon, "truoc" la index lon hon.
+    const target = direction === 'next' ? siblings[index - 1] : siblings[index + 1];
+    return target || null;
   }
 
   // --- Tìm toàn văn --------------------------------------------------------

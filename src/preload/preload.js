@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld('api', {
     list: () => ipcRenderer.invoke('projects:list'),
     pin: (cwd) => ipcRenderer.invoke('projects:pin', { cwd }),
     unpin: (cwd) => ipcRenderer.invoke('projects:unpin', { cwd }),
+    reorderPinned: (orderedCwds) => ipcRenderer.invoke('projects:reorderPinned', { orderedCwds }),
     pruneMissing: () => ipcRenderer.invoke('projects:pruneMissing'),
     hide: (cwd) => ipcRenderer.invoke('projects:hide', { cwd }),
     browse: () => ipcRenderer.invoke('projects:browse'),
@@ -62,11 +63,63 @@ contextBridge.exposeInMainWorld('api', {
     revealFile: (filePath) => ipcRenderer.invoke('history:revealFile', { filePath }),
     search: (params) => ipcRenderer.invoke('history:search', params),
     cancelSearch: (requestId) => ipcRenderer.invoke('history:cancelSearch', { requestId }),
+    storageStats: () => ipcRenderer.invoke('history:storageStats'),
+    usageStats: () => ipcRenderer.invoke('history:usageStats'),
+    previewCleanup: (targetFreeBytes) => ipcRenderer.invoke('history:previewCleanup', { targetFreeBytes }),
+    cleanupOldest: (targetFreeBytes) => ipcRenderer.invoke('history:cleanupOldest', { targetFreeBytes }),
     onIndexProgress: (callback) => subscribe('history:indexProgress', callback),
     onSearchHits: (callback) => subscribe('history:searchHits', callback),
     onSearchProgress: (callback) => subscribe('history:searchProgress', callback),
     onSearchDone: (callback) => subscribe('history:searchDone', callback),
     onSearchError: (callback) => subscribe('history:searchError', callback),
+  },
+
+  terminal: {
+    showContextMenu: (payload) => ipcRenderer.invoke('terminal:showContextMenu', payload),
+  },
+
+  ssh: {
+    list: () => ipcRenderer.invoke('ssh:list'),
+    add: (input) => ipcRenderer.invoke('ssh:add', input),
+    update: (id, input) => ipcRenderer.invoke('ssh:update', { id, ...input }),
+    remove: (id) => ipcRenderer.invoke('ssh:remove', { id }),
+    browseKey: () => ipcRenderer.invoke('ssh:browseKey'),
+    uploadFile: (hostId, localPath) => ipcRenderer.invoke('ssh:uploadFile', { hostId, localPath }),
+  },
+
+  sftp: {
+    connect: (hostId) => ipcRenderer.invoke('sftp:connect', { hostId }),
+    list: (connId, path) => ipcRenderer.invoke('sftp:list', { connId, path }),
+    mkdir: (connId, path) => ipcRenderer.invoke('sftp:mkdir', { connId, path }),
+    delete: (connId, path) => ipcRenderer.invoke('sftp:delete', { connId, path }),
+    rmdir: (connId, path) => ipcRenderer.invoke('sftp:rmdir', { connId, path }),
+    disconnect: (connId) => ipcRenderer.invoke('sftp:disconnect', { connId }),
+    download: (connId, remotePath, fileName) =>
+      ipcRenderer.invoke('sftp:download', { connId, remotePath, fileName }),
+    upload: (connId, remoteDir, localPaths) =>
+      ipcRenderer.invoke('sftp:upload', { connId, remoteDir, localPaths }),
+  },
+
+  workspace: {
+    listPresets: () => ipcRenderer.invoke('workspace:listPresets'),
+    savePreset: (name, tabs) => ipcRenderer.invoke('workspace:savePreset', { name, tabs }),
+    removePreset: (id) => ipcRenderer.invoke('workspace:removePreset', { id }),
+  },
+
+  git: {
+    branch: (cwd) => ipcRenderer.invoke('git:branch', { cwd }),
+  },
+
+  backup: {
+    export: () => ipcRenderer.invoke('backup:export'),
+    import: () => ipcRenderer.invoke('backup:import'),
+  },
+
+  update: {
+    check: () => ipcRenderer.invoke('update:check'),
+    download: () => ipcRenderer.invoke('update:download'),
+    install: () => ipcRenderer.invoke('update:install'),
+    onStatus: (callback) => subscribe('update:status', callback),
   },
 
   theme: {
@@ -109,11 +162,18 @@ contextBridge.exposeInMainWorld('api', {
   app: {
     info: () => ipcRenderer.invoke('app:info'),
     openExternal: (url) => ipcRenderer.invoke('app:openExternal', { url }),
+    focusWindow: () => ipcRenderer.invoke('app:focusWindow'),
+    getStartupPrefs: () => ipcRenderer.invoke('app:getStartupPrefs'),
+    setOpenAtLogin: (enabled) => ipcRenderer.invoke('app:setOpenAtLogin', { enabled }),
+    setMinimizeToTray: (enabled) => ipcRenderer.invoke('app:setMinimizeToTray', { enabled }),
+    setToggleHotkey: (accelerator) => ipcRenderer.invoke('app:setToggleHotkey', { accelerator }),
   },
 
   clipboard: {
     pasteImage: () => ipcRenderer.invoke('clipboard:pasteImage'),
     readText: () => ipcRenderer.invoke('clipboard:readText'),
+    writeText: (text) => ipcRenderer.invoke('clipboard:writeText', { text }),
+    captureScreenshot: () => ipcRenderer.invoke('clipboard:captureScreenshot'),
   },
 
   /**
@@ -137,6 +197,7 @@ contextBridge.exposeInMainWorld('api', {
     onNewClaudeTab: (callback) => subscribe('menu:newClaudeTab', callback),
     onNewShellTab: (callback) => subscribe('menu:newShellTab', callback),
     onCloseTab: (callback) => subscribe('menu:closeTab', callback),
+    onReopenClosedTab: (callback) => subscribe('menu:reopenClosedTab', callback),
     onSplitPane: (callback) => subscribe('menu:splitPane', callback),
     onFocusOtherPane: (callback) => subscribe('menu:focusOtherPane', callback),
     onClosePane: (callback) => subscribe('menu:closePane', callback),
@@ -144,5 +205,9 @@ contextBridge.exposeInMainWorld('api', {
     onFocusSearch: (callback) => subscribe('menu:focusSearch', callback),
     onRefreshHistory: (callback) => subscribe('menu:refreshHistory', callback),
     onOpenProjectTab: (callback) => subscribe('menu:openProjectTab', callback),
+    onPasteToTerminal: (callback) => subscribe('menu:pasteToTerminal', callback),
+    onTerminalFontIncrease: (callback) => subscribe('menu:terminalFontIncrease', callback),
+    onTerminalFontDecrease: (callback) => subscribe('menu:terminalFontDecrease', callback),
+    onTerminalFontReset: (callback) => subscribe('menu:terminalFontReset', callback),
   },
 });

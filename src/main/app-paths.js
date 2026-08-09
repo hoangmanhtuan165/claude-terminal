@@ -79,6 +79,16 @@ function pinnedProjectsPath() {
   return path.join(userDataDir(), 'pinned-projects.json');
 }
 
+/** Danh sach ho so may chu SSH nguoi dung tu luu (khong chua mat khau). */
+function sshHostsPath() {
+  return path.join(userDataDir(), 'ssh-hosts.json');
+}
+
+/** Cac bo tab da luu ten de mo lai hang loat (khong gian lam viec). */
+function workspacePresetsPath() {
+  return path.join(userDataDir(), 'workspace-presets.json');
+}
+
 /**
  * Danh dau sao va ghi chu cho tung phien.
  *
@@ -110,6 +120,8 @@ module.exports = {
   historyIndexPath,
   contentCacheDir,
   pinnedProjectsPath,
+  sshHostsPath,
+  workspacePresetsPath,
   sessionNotesPath,
   settingsPath,
   crashLogPath,

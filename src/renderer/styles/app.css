@@ -58,6 +58,19 @@ button {
   background: var(--surface-titlebar);
   border-bottom: 1px solid var(--border-subtle);
   -webkit-app-region: drag;
+  /* .titlebar la mot grid item cua .app - grid item mac dinh min-width:auto
+     (tinh theo noi dung), khong phai 0. Nhieu tab thi tong do rong tu nhien
+     cua .tab-strip vuot qua cua so, ep CA THANH TIEU DE rong ra theo, day nut
+     +/lich su/theme ra khoi vung nhin thay - .tab-strip khi do khong bao gio
+     bi ep nho lai nen cuon ngang rieng cua no cung khong kich hoat. */
+  min-width: 0;
+}
+
+/* macOS dat den giao thong (do/vang/xanh) ben trai thay vi nut o ben phai
+   nhu Windows/Linux - doi le padding cho khop, xem theme.js TRAFFIC_LIGHT_POSITION. */
+body[data-platform='darwin'] .titlebar {
+  padding-left: var(--window-controls-w);
+  padding-right: var(--sp-3);
 }
 
 .titlebar button,
@@ -257,8 +270,8 @@ button {
   top: 0;
   left: 0;
   z-index: 0;
-  background: var(--bg-overlay);
-  border: 1px solid var(--border-default);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-sm);
   opacity: 0;
@@ -293,8 +306,10 @@ button {
 }
 
 .tab.is-active {
-  /* Nen that su do .tab-active-indicator dam nhan, o day chi doi mau chu */
-  color: var(--text-primary);
+  /* Nen that su do .tab-active-indicator dam nhan, o day chi doi mau chu.
+     Dung mau accent (khong chi dam hon) de khong lan vao cac tab con lai khi
+     nen titlebar/pill qua gan mau nhau. */
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -405,6 +420,36 @@ button {
   background: var(--accent-soft);
 }
 
+/* Banner "Noi tiep phien claude" de len goc tren pane vua phuc hoi thanh shell
+   tran - khong choan cho, bam bo qua la mat han. */
+.pane-resume-banner {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  right: var(--sp-2);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.pane-resume-banner .btn {
+  height: 26px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-sm);
+}
+
+.pane-resume-banner .icon-btn {
+  margin-left: auto;
+}
+
 /* --- Hang go nhanh ------------------------------------------------------- */
 
 .quick-bar {
@@ -440,6 +485,61 @@ button {
   place-items: center;
   padding: 4px 7px;
   color: var(--text-tertiary);
+}
+
+.quick-chip-icon {
+  display: grid;
+  place-items: center;
+  padding: 4px 7px;
+  color: var(--text-secondary);
+}
+
+.quick-chip-icon.is-waiting {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  animation: pulse-soft 1.1s ease-in-out infinite;
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* The xem truoc anh vua chup man hinh - noi dat gan nut chup, tu bien mat. */
+.screenshot-preview {
+  position: fixed;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 220px;
+  padding: var(--sp-2);
+  background: color-mix(in srgb, var(--bg-overlay) 94%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  animation: pop-in var(--dur-fast) var(--ease);
+}
+
+.screenshot-preview img {
+  width: 100%;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.screenshot-preview span {
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  text-align: center;
 }
 
 /* Vach keo giua hai pane. Vung bam rong hon vach nhin thay cho de tro chuot. */
@@ -530,10 +630,38 @@ button {
 }
 
 .sidebar-scroll {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* O tim dung yen o tren, chi phan danh sach ben duoi cuon - go tim ma list
+   cuon theo thi mat dau ngay ca chinh cai vua go. */
+.sidebar-search {
+  flex-shrink: 0;
+  padding: var(--sp-2) var(--sp-2) 0;
+}
+
+.sidebar-search .search-field input {
+  height: 32px;
+  padding: 0 var(--sp-2) 0 30px;
+  font-size: var(--fs-sm);
+}
+
+.sidebar-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding-bottom: var(--sp-6);
+}
+
+/* Muc "Vua dung" luon mo, khong thu gon duoc - khong can hover/con tro tay. */
+.sidebar-heading.is-static {
+  cursor: default;
+}
+.sidebar-heading.is-static:hover {
+  color: var(--text-tertiary);
 }
 
 .sidebar-section + .sidebar-section {
@@ -1575,6 +1703,18 @@ details.block pre {
   color: var(--accent);
 }
 
+/* Ngu canh phien sap day, Claude Code sap tu nen (>= 95%) - noi bat hon ca
+   is-warning thuong, nhap nhay nhe de khong bi lo giua thanh trang thai. */
+.status-button.is-critical {
+  background: var(--danger-soft);
+  color: var(--danger);
+  animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+.status-button.is-critical .icon {
+  color: var(--danger);
+}
+
 /* --- Thanh phan tram muc su dung ----------------------------------------- */
 
 .usage-title {
@@ -1616,6 +1756,254 @@ details.block pre {
 
 .usage-pct.is-danger {
   color: var(--danger);
+}
+
+/* --- Doi ten tab thu cong -------------------------------------------------- */
+
+.tab-label-input {
+  min-width: 60px;
+  max-width: 160px;
+  padding: 1px var(--sp-1);
+  background: var(--bg-raised);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.tab-label-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* --- Nut cuon toi day trong pane terminal --------------------------------- */
+
+.pane-scroll-bottom {
+  position: absolute;
+  right: var(--sp-3);
+  bottom: var(--sp-3);
+  z-index: 5;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.pane-scroll-bottom:hover {
+  background: var(--bg-hover);
+}
+
+/* --- Cham "dang mo" tren sidebar ------------------------------------------ */
+
+.project-dot.is-open {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+/* --- Keo-tha sap xep du an ghim -------------------------------------------- */
+
+.project-row.is-pinned-row {
+  cursor: grab;
+}
+
+.project-row.is-dragging {
+  opacity: 0.4;
+}
+
+.project-row.is-drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.project-row.is-drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* --- Canh bao dung luong transcript ---------------------------------------- */
+
+.storage-warning {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--warning-soft, rgba(163, 127, 17, 0.12));
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.storage-warning button {
+  flex-shrink: 0;
+}
+
+/* --- Sao chep tin nhan trong transcript ------------------------------------ */
+
+.message-copy {
+  margin-left: auto;
+}
+
+.message-copy.is-copied {
+  color: var(--accent);
+}
+
+/* --- Dieu huong phien truoc/sau -------------------------------------------- */
+
+.transcript-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.transcript-title-row h2 {
+  margin: 0;
+}
+
+/* --- Man hinh Thong ke ------------------------------------------------------ */
+
+.stats-content {
+  height: 100%;
+  padding: var(--sp-5);
+  overflow-y: auto;
+}
+
+.stats-loading {
+  padding: var(--sp-6);
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-6);
+}
+
+.stats-card {
+  padding: var(--sp-4);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+}
+
+.stats-card-value {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xl, 22px);
+  font-weight: 600;
+}
+
+.stats-card-label {
+  margin-top: 4px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}
+
+.stats-section {
+  margin-bottom: var(--sp-6);
+}
+
+.stats-section-title {
+  margin-bottom: var(--sp-3);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.stats-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 140px;
+  padding: var(--sp-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+}
+
+.stats-bar {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  min-width: 4px;
+}
+
+.stats-bar-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  opacity: 0.75;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.stats-bar:hover .stats-bar-fill {
+  opacity: 1;
+}
+
+.stats-bar-label {
+  margin-top: 4px;
+  color: var(--text-quaternary);
+  font-size: 9px;
+  writing-mode: vertical-rl;
+}
+
+.stats-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+}
+
+.stats-project-row {
+  display: grid;
+  grid-template-columns: 140px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.stats-project-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-project-track {
+  height: 6px;
+  background: var(--bg-hover);
+  border-radius: var(--r-full);
+  overflow: hidden;
+}
+
+.stats-project-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-full);
+}
+
+.stats-project-value {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+
+/* --- Menu tuy chon khoi dong trong menu tai khoan --------------------------- */
+
+.account-toggle-row {
+  padding: 2px 0;
 }
 
 .usage-track {
@@ -1679,6 +2067,59 @@ details.block pre {
   gap: var(--sp-1);
 }
 
+/* --- Danh sach tab (nut mui ten canh dai tab) ----------------------------- */
+
+.tab-list-menu {
+  width: 280px;
+  max-height: 60vh;
+  padding: var(--sp-2);
+  gap: 2px;
+}
+
+.tab-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-2);
+  background: transparent;
+  border: none;
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tab-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.tab-list-item.is-active {
+  background: var(--accent-soft);
+}
+
+.tab-list-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab-list-label.is-dead {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+.tab-list-item .tab-close {
+  opacity: 0;
+}
+
+.tab-list-item:hover .tab-close {
+  opacity: 1;
+}
+
 .account-row {
   display: flex;
   align-items: baseline;
@@ -1704,6 +2145,36 @@ details.block pre {
   color: var(--text-secondary);
   font-size: var(--fs-sm);
   line-height: 1.6;
+}
+
+/* --- Sua nut go nhanh ------------------------------------------------------ */
+
+.quick-edit-menu {
+  width: 260px;
+}
+
+.quick-edit-textarea {
+  width: 100%;
+  padding: var(--sp-2);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.quick-edit-textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.quick-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
 }
 
 .account-actions {
@@ -1817,4 +2288,440 @@ details.block pre {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--scrollbar-hover);
   background-clip: content-box;
+}
+
+/* --- Sidebar hai tab: Dự án / Máy chủ SSH --------------------------------- */
+
+.sidebar-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: var(--sp-2) var(--sp-2) 0;
+}
+
+.sidebar-tab {
+  flex: 1;
+  padding: var(--sp-2) 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.sidebar-tab:hover {
+  color: var(--text-secondary);
+}
+
+.sidebar-tab.is-active {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* Phien SSH dang chay - mau rieng de phan biet voi claude tren thanh tab */
+.tab-dot[data-type='ssh'] {
+  background: var(--term-cyan);
+  box-shadow: 0 0 0 3px rgba(31, 122, 118, 0.18);
+}
+
+/* --- Modal dung chung (form them/sua may chu SSH) ------------------------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  animation: pop-in var(--dur-fast) var(--ease);
+}
+
+.modal-card {
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  max-height: 85vh;
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  overflow-y: auto;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+}
+
+.field-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.field-row .field-label {
+  flex: 1;
+}
+
+.field-input {
+  height: 32px;
+  padding: 0 var(--sp-2);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-sm);
+}
+
+.field-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.field-key-row {
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.field-key-row .field-input {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-tertiary);
+}
+
+.field-key-row .btn {
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 var(--sp-3);
+  font-size: var(--fs-xs);
+}
+
+.ssh-forwards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.ssh-forwards-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.ssh-forwards-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.ssh-forward-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 1fr 68px 28px;
+  gap: var(--sp-1);
+  align-items: center;
+}
+
+.ssh-forward-row .field-input {
+  height: 28px;
+  font-size: var(--fs-xs);
+}
+
+.ssh-command-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 28px;
+  gap: var(--sp-1);
+  align-items: center;
+}
+
+.ssh-command-row .field-input {
+  height: 28px;
+  font-size: var(--fs-xs);
+}
+
+/* --- Loi dat phim tat toan cuc -------------------------------------------- */
+
+.hotkey-error {
+  display: block;
+  min-height: 14px;
+  margin-top: 2px;
+  color: var(--danger);
+  font-size: var(--fs-xs);
+}
+
+/* --- Hang lenh nhanh rieng cho tab SSH (quick-send.js) --------------------- */
+
+.quick-bar-ssh {
+  padding-top: 2px;
+}
+
+.quick-chip-ssh {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.quick-chip-ssh:hover {
+  background: var(--accent-soft);
+}
+
+/* --- Thu vien prompt -------------------------------------------------------- */
+
+.prompt-library-menu {
+  width: 340px;
+}
+
+.prompt-library-search {
+  height: 30px;
+}
+
+.prompt-library-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.prompt-library-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+
+.prompt-library-group {
+  flex-shrink: 0;
+  padding: 1px var(--sp-2);
+  background: var(--bg-surface);
+  border-radius: var(--r-full);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.prompt-library-text {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-2);
+  background: none;
+  border: none;
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.prompt-library-text:hover {
+  background: var(--bg-hover);
+}
+
+.prompt-library-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* --- Tim trong tat ca tab (terminal-find.js) -------------------------------- */
+
+.term-find-all-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: var(--sp-1);
+  background: color-mix(in srgb, var(--bg-overlay) 94%, transparent);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.term-find-all-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  background: none;
+  border: none;
+  border-radius: var(--r-md);
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.term-find-all-row:hover {
+  background: var(--bg-hover);
+}
+
+.term-find-all-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.term-find-all-count {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+/* --- Gui dong thoi toi nhieu tab SSH ---------------------------------------- */
+
+.tab.is-broadcast-target {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* --- Trinh duyet file SFTP --------------------------------------------------- */
+
+.sftp-modal {
+  width: 620px;
+  max-height: 80vh;
+}
+
+.sftp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sftp-breadcrumb {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-toolbar-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 1px;
+}
+
+.sftp-list {
+  flex: 1;
+  min-height: 240px;
+  overflow-y: auto;
+  padding: var(--sp-2) var(--sp-2);
+}
+
+.sftp-list.is-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -3px;
+  background: var(--accent-soft);
+}
+
+.sftp-row {
+  display: grid;
+  grid-template-columns: 20px 1fr 76px 96px 56px;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 5px var(--sp-2);
+  border-radius: var(--r-md);
+}
+
+.sftp-row:hover {
+  background: var(--bg-hover);
+}
+
+.sftp-row-icon {
+  display: grid;
+  place-items: center;
+  color: var(--text-tertiary);
+}
+
+.sftp-row-name {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-row-size,
+.sftp-row-time {
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-row-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1px;
+  opacity: 0;
+}
+
+.sftp-row:hover .sftp-row-actions {
+  opacity: 1;
+}
+
+.sftp-status {
+  padding: var(--sp-2) var(--sp-4);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+}
+
+.sftp-status.is-error {
+  color: var(--danger);
 }

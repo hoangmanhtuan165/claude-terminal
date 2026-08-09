@@ -69,10 +69,11 @@ function shortenPath(fullPath, maxLength = 46) {
   const value = String(fullPath || '');
   if (value.length <= maxLength) return value;
 
+  const sep = value.includes('\\') ? '\\' : '/';
   const parts = value.split(/[\\/]/);
   const last = parts[parts.length - 1] || '';
   const first = parts[0] || '';
-  return `${first}\\...\\${last}`.slice(0, maxLength);
+  return `${first}${sep}...${sep}${last}`.slice(0, maxLength);
 }
 
 function baseName(fullPath) {
@@ -97,6 +98,37 @@ function highlightHtml(text, needle) {
   return safeText.replace(new RegExp(pattern, 'gi'), (match) => `<mark>${match}</mark>`);
 }
 
+/**
+ * Khop mo kieu "go tat": cac ky tu cua tu khoa phai xuat hien dung thu tu
+ * nhung khong can lien nhau, nen `qlt` khop `quan ly terminal`.
+ * Diem cao hon khi khop lien mach va khi khop som trong chuoi. Tra ve -1 neu
+ * khong khop gi ca.
+ */
+function fuzzyScore(text, query) {
+  if (!query) return 0;
+
+  const haystack = text.toLowerCase();
+  const needle = query.toLowerCase();
+
+  if (haystack.includes(needle)) {
+    // Khop nguyen cum luon hon khop roi rac.
+    return 1000 - haystack.indexOf(needle);
+  }
+
+  let score = 0;
+  let at = -1;
+  let streak = 0;
+
+  for (const char of needle) {
+    const found = haystack.indexOf(char, at + 1);
+    if (found === -1) return -1;
+    streak = found === at + 1 ? streak + 1 : 0;
+    score += 10 + streak * 5;
+    at = found;
+  }
+  return score;
+}
+
 window.formatUtils = {
   escapeHtml,
   formatDateTime,
@@ -107,4 +139,5 @@ window.formatUtils = {
   baseName,
   toTitleLike,
   highlightHtml,
+  fuzzyScore,
 };

@@ -5,6 +5,7 @@ const os = require('node:os');
 const pty = require('@lydell/node-pty');
 const scrollbackStore = require('../storage/scrollback-store');
 const workspaceStore = require('../storage/workspace-store');
+const sshStore = require('../storage/ssh-store');
 const { claudeConfigDir } = require('../app-paths');
 const { resolveShell, buildShellArgs, startupCommandFor } = require('./shell-resolver');
 
@@ -80,7 +81,7 @@ function buildEnv() {
   return env;
 }
 
-function create({ tabId, cwd, sessionType = 'shell', resumeSessionId, cols = 80, rows = 24 }) {
+function create({ tabId, cwd, sessionType = 'shell', resumeSessionId, sshHostId, cols = 80, rows = 24 }) {
   // Renderer co the bi nap lai (crash roi tu phuc hoi) va tao lai dung tab cu.
   // Khi do tien trinh cu khong con ai doc output nua - phai giet no truoc, neu
   // khong no se song mo coi va tab moi bao loi khong mo duoc phien.
@@ -93,7 +94,20 @@ function create({ tabId, cwd, sessionType = 'shell', resumeSessionId, cols = 80,
   const skipPermissions =
     (sessionType === 'claude' || sessionType === 'claude-resume') &&
     workspaceStore.isSkipPermissionsProject(workingDir);
-  const startupCommand = startupCommandFor(sessionType, { resumeSessionId, skipPermissions });
+
+  let sshHost = null;
+  if (sessionType === 'ssh') {
+    sshHost = sshStore.getHost(sshHostId);
+    if (!sshHost) throw new Error('Không tìm thấy hồ sơ SSH này (có thể đã bị xoá).');
+    sshStore.touchLastUsed(sshHostId);
+  }
+
+  const startupCommand = startupCommandFor(sessionType, {
+    resumeSessionId,
+    skipPermissions,
+    sshHost,
+    shellKind: shell.kind,
+  });
   const args = buildShellArgs(shell, startupCommand);
 
   const proc = pty.spawn(shell.path, args, {
@@ -102,7 +116,8 @@ function create({ tabId, cwd, sessionType = 'shell', resumeSessionId, cols = 80,
     rows,
     cwd: workingDir,
     env: buildEnv(),
-    useConpty: true,
+    // useConpty chi co y nghia tren Windows; khong dat tren macOS/Linux.
+    ...(process.platform === 'win32' ? { useConpty: true } : {}),
   });
 
   const session = { proc, cwd: workingDir, sessionType, exited: false };
@@ -127,7 +142,14 @@ function create({ tabId, cwd, sessionType = 'shell', resumeSessionId, cols = 80,
     sendToRenderer('pty:exit', { tabId, exitCode, signal });
   });
 
-  return { tabId, cwd: workingDir, shell: shell.path, sessionType, skipPermissions };
+  return {
+    tabId,
+    cwd: workingDir,
+    shell: shell.path,
+    sessionType,
+    skipPermissions,
+    sshHostName: sshHost?.name || null,
+  };
 }
 
 function write(tabId, data) {

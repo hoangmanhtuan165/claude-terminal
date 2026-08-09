@@ -2,7 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { clipboard } = require('electron');
+const { clipboard, shell } = require('electron');
 const { pastedImagesDir } = require('../app-paths');
 
 /**
@@ -38,17 +38,64 @@ function pruneOld() {
   }
 }
 
+/** Ghi mot buffer PNG ra file tam, tra ve duong dan. */
+function saveBuffer(buffer) {
+  pruneOld();
+  counter += 1;
+  const filePath = path.join(pastedImagesDir(), `pasted-${Date.now()}-${counter}.png`);
+  fs.writeFileSync(filePath, buffer);
+  return filePath;
+}
+
 /** Luu anh clipboard hien tai ra file, tra ve duong dan hoac null neu clipboard khong co anh. */
 function pasteImageToFile() {
   const image = clipboard.readImage();
   if (image.isEmpty()) return null;
-
-  pruneOld();
-
-  counter += 1;
-  const filePath = path.join(pastedImagesDir(), `pasted-${Date.now()}-${counter}.png`);
-  fs.writeFileSync(filePath, image.toPNG());
-  return filePath;
+  return saveBuffer(image.toPNG());
 }
 
-module.exports = { pasteImageToFile };
+const SCREENSHOT_POLL_MS = 400;
+const SCREENSHOT_TIMEOUT_MS = 45_000;
+
+/**
+ * Mo cong cu chup man hinh goc cua Windows (Win+Shift+S) roi cho anh moi xuat
+ * hien trong clipboard he thong - Windows tu dong copy ket qua vao clipboard
+ * ngay khi nguoi dung chon xong vung chup, khong co API rieng de "nhan" ket
+ * qua nen phai doi (poll) va so sanh voi anh dang co san truoc do.
+ *
+ * Tra ve { filePath, dataUrl } khi phat hien anh moi, hoac null neu qua thoi
+ * gian cho (nguoi dung bam Esc huy chup, hoac chon "Sao chep" mot noi dung
+ * khac khong phai anh).
+ */
+function captureScreenshot() {
+  const before = clipboard.readImage();
+  const beforeBuffer = before.isEmpty() ? null : before.toPNG();
+
+  shell.openExternal('ms-screenclip:');
+
+  return new Promise((resolve) => {
+    const deadline = Date.now() + SCREENSHOT_TIMEOUT_MS;
+
+    const tick = () => {
+      const current = clipboard.readImage();
+      if (!current.isEmpty()) {
+        const currentBuffer = current.toPNG();
+        const isNew = !beforeBuffer || !currentBuffer.equals(beforeBuffer);
+        if (isNew) {
+          const filePath = saveBuffer(currentBuffer);
+          resolve({ filePath, dataUrl: `data:image/png;base64,${currentBuffer.toString('base64')}` });
+          return;
+        }
+      }
+      if (Date.now() >= deadline) {
+        resolve(null);
+        return;
+      }
+      setTimeout(tick, SCREENSHOT_POLL_MS);
+    };
+
+    setTimeout(tick, SCREENSHOT_POLL_MS);
+  });
+}
+
+module.exports = { pasteImageToFile, captureScreenshot };

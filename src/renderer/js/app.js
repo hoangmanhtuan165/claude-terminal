@@ -15,22 +15,35 @@ const dom = {
   tabStrip: el('tab-strip'),
   historyScreen: el('history-screen'),
   terminalScreen: el('terminal-screen'),
+  statsScreen: el('stats-screen'),
+  statsContent: el('stats-content'),
   sidebar: el('projects-sidebar'),
+  sshSidebar: el('ssh-sidebar'),
+  sidebarTabProjects: el('sidebar-tab-projects'),
+  sidebarTabSsh: el('sidebar-tab-ssh'),
   statusCwd: el('status-cwd'),
   statusShell: el('status-shell'),
   statusHistory: el('status-history'),
   navHistory: el('nav-history'),
+  navStats: el('nav-stats'),
+  btnTabList: el('btn-tab-list'),
+  btnWorkspaces: el('btn-workspaces'),
+  btnBroadcast: el('btn-broadcast'),
   btnNewClaude: el('btn-new-claude'),
   btnPalette: el('btn-palette'),
   btnTheme: el('btn-theme'),
   paletteRoot: el('palette-root'),
   quickBar: el('quick-bar'),
+  quickBarSsh: el('quick-bar-ssh'),
   modelPicker: el('model-picker'),
   statusModel: el('status-model'),
   accountButton: el('account-button'),
   statusAccount: el('status-account'),
   usageButton: el('usage-button'),
   statusUsage: el('status-usage'),
+  updateButton: el('update-button'),
+  statusUpdate: el('status-update'),
+  statusBranch: el('status-branch'),
 };
 
 const historyElements = {
@@ -43,6 +56,8 @@ const historyElements = {
   includeToolsCheckbox: el('search-include-tools'),
   includeSidechainCheckbox: el('search-include-sidechain'),
   hideSmallCheckbox: el('hide-small-sessions'),
+  onlyErrorCheckbox: el('only-error-sessions'),
+  storageWarning: el('storage-warning'),
 };
 
 const findElements = {
@@ -52,12 +67,17 @@ const findElements = {
   next: el('term-find-next'),
   prev: el('term-find-prev'),
   close: el('term-find-close'),
+  allToggle: el('term-find-all-toggle'),
+  allResults: el('term-find-all-results'),
 };
 
 let terminalTabs;
 let historyPanel;
 let transcriptView;
 let projectsSidebar;
+let sshSidebar;
+let workspacePresetsPanel;
+let statsPanel;
 let themeManager;
 let terminalFind;
 let commandPalette;
@@ -70,22 +90,49 @@ let currentScreen = 'terminal';
 function showScreen(screen) {
   currentScreen = screen;
   const isTerminal = screen === 'terminal';
+  const isHistory = screen === 'history';
+  const isStats = screen === 'stats';
 
   dom.terminalScreen.classList.toggle('is-hidden', !isTerminal);
-  dom.historyScreen.classList.toggle('is-hidden', isTerminal);
-  dom.navHistory.classList.toggle('is-active', !isTerminal);
+  dom.historyScreen.classList.toggle('is-hidden', !isHistory);
+  dom.statsScreen.classList.toggle('is-hidden', !isStats);
+  dom.navHistory.classList.toggle('is-active', isHistory);
+  dom.navStats.classList.toggle('is-active', isStats);
 
   // xterm đo kích thước theo DOM, nên phải fit lại sau khi pane hiện trở lại.
   if (isTerminal) terminalTabs.handleShown();
-  else historyPanel.focusSearch();
+  else if (isHistory) historyPanel.focusSearch();
+  else if (isStats) statsPanel.show();
 }
 
 // --- Tác vụ tab ------------------------------------------------------------
 
-async function openTerminal({ cwd, sessionType, resumeSessionId, title }) {
+async function openTerminal({ cwd, sessionType, resumeSessionId, title, runCommand }) {
   showScreen('terminal');
   await terminalTabs.createTab({ cwd, sessionType, resumeSessionId, title });
+  // Vd bam "Chạy script" tren menu chuot phai sidebar - go thang lenh xuong
+  // PTY vua mo, giong het co che cua quick-send.js.
+  if (runCommand) {
+    const pane = terminalTabs.activePane;
+    if (pane) window.api.pty.write(pane.id, `${runCommand}\r`);
+  }
 }
+
+async function openSshTerminal(host) {
+  showScreen('terminal');
+  await terminalTabs.createTab({ sessionType: 'ssh', sshHostId: host.id, title: `ssh · ${host.name}` });
+}
+
+/** Mo lai tuan tu tung tab da luu trong mot khong gian lam viec. */
+async function restoreWorkspacePreset(preset) {
+  showScreen('terminal');
+  for (const tab of preset.tabs) {
+    await terminalTabs.createTab({ cwd: tab.cwd, sessionType: tab.sessionType, sshHostId: tab.sshHostId });
+  }
+}
+
+/** Tang moi lan doi tab - dam bao ket qua git branch tra ve tra cham cua tab cu khong ghi de tab moi. */
+let branchRequestSeq = 0;
 
 function updateStatusBar() {
   const tab = terminalTabs.activeTab;
@@ -94,6 +141,44 @@ function updateStatusBar() {
   terminalFind?.handleTabChange();
   // Model được nhớ theo từng dự án nên đổi tab là nhãn phải đổi theo.
   quickSend?.refreshModelLabel();
+  quickSend?.refreshSshBar();
+  // Chấm "đang mở" trên sidebar phải theo kịp khi tab mới mở/đóng.
+  projectsSidebar?.render();
+  sshSidebar?.render();
+
+  const seq = ++branchRequestSeq;
+  dom.statusBranch.textContent = '';
+  if (tab?.cwd) {
+    window.api.git.branch(tab.cwd).then((branch) => {
+      if (seq !== branchRequestSeq) return;
+      dom.statusBranch.textContent = branch || '';
+      dom.statusBranch.closest('.status-item').classList.toggle('is-hidden', !branch);
+    });
+  } else {
+    dom.statusBranch.closest('.status-item').classList.add('is-hidden');
+  }
+}
+
+/** Tap cwd (chữ thường) đang có ít nhất một tab mở - dùng cho chấm sidebar. */
+function openProjectCwds() {
+  const cwds = new Set();
+  for (const tab of terminalTabs.tabs.values()) {
+    for (const pane of tab.panes) {
+      if (pane.cwd) cwds.add(String(pane.cwd).toLowerCase());
+    }
+  }
+  return cwds;
+}
+
+/** Tap sshHostId đang có tab kết nối còn sống - dùng cho chấm sidebar Máy chủ. */
+function openSshHostIds() {
+  const ids = new Set();
+  for (const tab of terminalTabs.tabs.values()) {
+    for (const pane of tab.panes) {
+      if (pane.sessionType === 'ssh' && pane.sshHostId && pane.alive) ids.add(pane.sshHostId);
+    }
+  }
+  return ids;
 }
 
 /** Mở lại một phiên cũ: `claude --resume` chạy ngay tại thư mục gốc của phiên. */
@@ -210,8 +295,10 @@ async function bootstrap() {
     // historyPanel tạo sau transcriptView nên phải tra cứu lúc gọi, không phải
     // lúc khai báo.
     onNoteChange: (sessionId, note) => historyPanel?.applyNoteChange(sessionId, note),
+    onNavigate: (session, direction) => historyPanel?.adjacentSession(session, direction) || null,
   });
   transcriptView.showEmpty();
+  transcriptView.onSessionNavigated = (session) => historyPanel?.syncSelection(session);
 
   historyPanel = new window.HistoryPanel({
     elements: historyElements,
@@ -223,13 +310,19 @@ async function bootstrap() {
   terminalTabs = new window.TerminalTabs({
     paneElement: dom.terminalPane,
     stripElement: dom.tabStrip,
+    tabListButton: dom.btnTabList,
+    broadcastButton: dom.btnBroadcast,
     themeManager,
     onChange: updateStatusBar,
   });
 
+  await terminalTabs.loadFontSize();
+
   terminalFind = new window.TerminalFind({
     elements: findElements,
     getActiveTab: () => terminalTabs.activeTab,
+    getAllTabs: () => terminalTabs.tabs,
+    activateTab: (tabId) => terminalTabs.activate(tabId),
   });
 
   projectsSidebar = new window.ProjectsSidebar({
@@ -239,7 +332,23 @@ async function bootstrap() {
       historyPanel.setProjectFilter(cwd);
       showScreen('history');
     },
+    getOpenCwds: openProjectCwds,
   });
+
+  sshSidebar = new window.SshSidebar({
+    element: dom.sshSidebar,
+    onConnect: openSshTerminal,
+    getOpenHostIds: openSshHostIds,
+  });
+  await sshSidebar.reload();
+
+  workspacePresetsPanel = new window.WorkspacePresetsPanel({
+    button: dom.btnWorkspaces,
+    getTabsSnapshot: () => terminalTabs.snapshotForPreset(),
+    onRestore: restoreWorkspacePreset,
+  });
+
+  statsPanel = new window.StatsPanel({ element: dom.statsContent });
 
   commandPalette = new window.CommandPalette({
     root: dom.paletteRoot,
@@ -248,6 +357,7 @@ async function bootstrap() {
 
   quickSend = new window.QuickSend({
     quickBarElement: dom.quickBar,
+    sshQuickBarElement: dom.quickBarSsh,
     modelButton: dom.modelPicker,
     modelLabel: dom.statusModel,
     getActivePane: () => terminalTabs.activePane,
@@ -260,6 +370,8 @@ async function bootstrap() {
     label: dom.statusAccount,
     usageButton: dom.usageButton,
     usageLabel: dom.statusUsage,
+    updateButton: dom.updateButton,
+    updateLabel: dom.statusUpdate,
     quickSend,
     onNeedTerminal: () => showScreen('terminal'),
   });
@@ -273,6 +385,9 @@ async function bootstrap() {
 
   const info = await window.api.app.info();
   dom.statusShell.textContent = window.formatUtils.baseName(info.shell);
+  // macOS dat den giao thong ben trai thanh tieu de (Windows/Linux dat nut o
+  // ben phai) - CSS doc co nay de doi le tab-strip cho dung ben.
+  document.body.dataset.platform = info.platform;
 
   const restoredCount = await terminalTabs.restore();
   if (restoredCount === 0) {
@@ -286,9 +401,24 @@ async function bootstrap() {
   await refreshHistory();
 }
 
+/** Chuyển giữa panel "Dự án" và "Máy chủ" trong cùng một sidebar. */
+function showSidebarPanel(panel) {
+  const isSsh = panel === 'ssh';
+  dom.sidebar.classList.toggle('is-hidden', isSsh);
+  dom.sshSidebar.classList.toggle('is-hidden', !isSsh);
+  dom.sidebarTabProjects.classList.toggle('is-active', !isSsh);
+  dom.sidebarTabSsh.classList.toggle('is-active', isSsh);
+}
+
 function bindChrome() {
+  dom.sidebarTabProjects.addEventListener('click', () => showSidebarPanel('projects'));
+  dom.sidebarTabSsh.addEventListener('click', () => showSidebarPanel('ssh'));
+
   dom.navHistory.addEventListener('click', () =>
     showScreen(currentScreen === 'history' ? 'terminal' : 'history'),
+  );
+  dom.navStats.addEventListener('click', () =>
+    showScreen(currentScreen === 'stats' ? 'terminal' : 'stats'),
   );
   dom.btnNewClaude.addEventListener('click', () =>
     openTerminal({ cwd: terminalTabs.activeTab?.cwd, sessionType: 'claude' }),
@@ -303,6 +433,10 @@ function bindChrome() {
   );
   window.api.menu.onCloseTab(() => {
     if (terminalTabs.activeTabId) terminalTabs.closeTab(terminalTabs.activeTabId);
+  });
+  window.api.menu.onReopenClosedTab(() => {
+    showScreen('terminal');
+    terminalTabs.reopenClosedTab();
   });
   window.api.menu.onSplitPane(() => {
     showScreen('terminal');
@@ -324,7 +458,13 @@ function bindChrome() {
     historyPanel.focusSearch();
   });
   window.api.menu.onRefreshHistory(() => refreshHistory());
-  window.api.menu.onOpenProjectTab(({ cwd, sessionType }) => openTerminal({ cwd, sessionType }));
+  window.api.menu.onTerminalFontIncrease(() => terminalTabs.adjustFontSize(1));
+  window.api.menu.onTerminalFontDecrease(() => terminalTabs.adjustFontSize(-1));
+  window.api.menu.onTerminalFontReset(() => terminalTabs.resetFontSize());
+  window.api.menu.onOpenProjectTab(({ cwd, sessionType, resumeSessionId, runCommand }) =>
+    openTerminal({ cwd, sessionType, resumeSessionId, runCommand }),
+  );
+  window.api.menu.onPasteToTerminal(({ paneId }) => terminalTabs.pasteToPane(paneId));
   window.api.projects.onChanged(() => projectsSidebar.reload());
 
   window.addEventListener('keydown', handleGlobalKey);
@@ -341,6 +481,11 @@ function bindChrome() {
 
 function handleGlobalKey(event) {
   if (!event.ctrlKey || event.altKey) return;
+
+  // Ctrl+Shift+K (hoàn tác đóng tab) do menu giữ accelerator (xem main.js) -
+  // không bắt lại ở đây kẻo chạy hai lần, giống Ctrl+\ và Ctrl+] bên dưới.
+  // Nhưng vẫn phải chặn sớm để không rơi xuống nhánh Ctrl+K bên dưới.
+  if (event.shiftKey && (event.key === 'k' || event.key === 'K')) return;
 
   // Ctrl+K: bảng lệnh. Đặt ở renderer chứ không phải menu để còn đóng lại được
   // bằng chính phím đó khi bảng đang mở và đang giữ focus.
