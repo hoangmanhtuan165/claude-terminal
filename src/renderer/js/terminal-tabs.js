@@ -315,13 +315,19 @@ class TerminalTabs {
       /**
        * Shift+Enter: hau het terminal gui y het byte cua Enter thuong (\r),
        * CLI khong co cach nao phan biet nen luon submit thay vi xuong dong.
-       * Claude Code (giong VS Code/iTerm2/WezTerm sau khi chay /terminal-setup)
-       * nhan dien ESC+\r la "xuong dong, dung gui" - tu gui thang chuoi nay
-       * thay vi \r thuong khi phat hien co giu Shift.
+       * Tung thu gui ESC+\r (quy uoc /terminal-setup ghi cho VS Code/iTerm2/
+       * WezTerm) nhung day la mot terminal khong ten tuoi, Claude Code khong
+       * biet de nhan dien - ket qua la ky tu ESC roi vao input mot minh, day
+       * UI cua Claude Code vao trang thai la khien phim Space ngung chen
+       * khoang trang (xac nhan tu nguoi dung, sau khi da thu Shift+Enter).
+       * Doi sang gui thang \n (LF, tuong duong Ctrl+J) - day la co che UNIVERSAL,
+       * moi CLI doc stdin thuong deu hieu LF la "xuong dong" khac voi CR la
+       * "submit", khong can terminal duoc CLI nhan dien rieng, va khong co
+       * byte ESC la nao co the gay tac dung phu.
        */
       if (event.key === 'Enter' && event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
         event.preventDefault();
-        window.api.pty.write(pane.id, '\x1b\r');
+        window.api.pty.write(pane.id, '\n');
         return false;
       }
 
