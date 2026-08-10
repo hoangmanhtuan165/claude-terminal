@@ -134,13 +134,22 @@ function register(getWindow) {
     const recent = allProjects.filter((p) => !hidden.has(p.cwd.toLowerCase())).map(withSkipFlag);
 
     // Danh sach ghim la nguoi dung tu them, khong di kem san `exists`/
-    // `lastSessionId`/`totalTokens`/`costUsd` nhu recent (suy tu transcript) -
-    // bo sung o day cho dong bo giao dien va cho nut "no tiep" tren sidebar
-    // hoat dong voi ca du an ghim.
+    // `lastSessionId`/`totalTokens`/`costUsd`/`sessionCount`/`lastUsedAt` nhu
+    // recent (suy tu transcript) - bo sung o day cho dong bo giao dien va cho
+    // nut "no tiep" tren sidebar hoat dong voi ca du an ghim. Thieu
+    // `sessionCount`/`lastUsedAt` truoc day khien sidebar (projects-sidebar.js)
+    // luon roi ve nhanh "chi hien duong dan" cho MOI du an ghim, du da co
+    // phien va ton token that.
     const statsByCwd = new Map(
       allProjects.map((p) => [
         p.cwd.toLowerCase(),
-        { lastSessionId: p.lastSessionId, totalTokens: p.totalTokens, costUsd: p.costUsd },
+        {
+          lastSessionId: p.lastSessionId,
+          totalTokens: p.totalTokens,
+          costUsd: p.costUsd,
+          sessionCount: p.sessionCount,
+          lastUsedAt: p.lastUsedAt,
+        },
       ]),
     );
     const pinned = workspaceStore.listPinnedProjects().map((p) => {
@@ -151,6 +160,8 @@ function register(getWindow) {
         lastSessionId: stats?.lastSessionId || null,
         totalTokens: stats?.totalTokens || 0,
         costUsd: stats?.costUsd || 0,
+        sessionCount: stats?.sessionCount || 0,
+        lastUsedAt: stats?.lastUsedAt || null,
       });
     });
 
