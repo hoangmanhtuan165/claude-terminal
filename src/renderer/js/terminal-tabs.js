@@ -311,6 +311,20 @@ class TerminalTabs {
     // Ctrl+V/Cmd+V va doc thang clipboard cua he thong thay vi cho su kien do.
     term.attachCustomKeyEventHandler((event) => {
       if (event.type !== 'keydown') return true;
+
+      /**
+       * Shift+Enter: hau het terminal gui y het byte cua Enter thuong (\r),
+       * CLI khong co cach nao phan biet nen luon submit thay vi xuong dong.
+       * Claude Code (giong VS Code/iTerm2/WezTerm sau khi chay /terminal-setup)
+       * nhan dien ESC+\r la "xuong dong, dung gui" - tu gui thang chuoi nay
+       * thay vi \r thuong khi phat hien co giu Shift.
+       */
+      if (event.key === 'Enter' && event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        event.preventDefault();
+        window.api.pty.write(pane.id, '\x1b\r');
+        return false;
+      }
+
       const withCtrl = (event.ctrlKey || event.metaKey) && !event.altKey;
       if (!withCtrl) return true;
 
