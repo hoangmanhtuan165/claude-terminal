@@ -598,49 +598,63 @@ class TerminalTabs {
    * mot the xem truoc noi (giong het khi bam nut "Chup man hinh" o quick-send).
    */
   async _pasteFromClipboard(pane) {
-    const image = await window.api.clipboard.pasteImage();
-    if (image) {
-      const { filePath, dataUrl } = image;
-      if (pane.sessionType === 'ssh' && pane.sshHostId) {
-        const fileName = filePath.split(/[\\/]/).pop();
-        pane.term.write(`\r\n\x1b[90m--- đang tải ảnh lên ${fileName}... ---\x1b[0m\r\n`);
-        const result = await window.api.ssh.uploadFile(pane.sshHostId, filePath);
-        if (result.ok) {
-          pane.term.paste(`@${result.remotePath}`);
-          this._showPastePreview(pane, dataUrl);
-        } else {
-          pane.term.write(`\x1b[31m--- lỗi tải ảnh lên: ${result.error} ---\x1b[0m\r\n`);
+    try {
+      const image = await window.api.clipboard.pasteImage();
+      if (image) {
+        const { filePath, dataUrl } = image;
+        if (pane.sessionType === 'ssh' && pane.sshHostId) {
+          const fileName = filePath.split(/[\\/]/).pop();
+          pane.term.write(`\r\n\x1b[90m--- đang tải ảnh lên ${fileName}... ---\x1b[0m\r\n`);
+          const result = await window.api.ssh.uploadFile(pane.sshHostId, filePath);
+          if (result.ok) {
+            pane.term.paste(`@${result.remotePath}`);
+            this._showPastePreview(pane, dataUrl);
+          } else {
+            pane.term.write(`\x1b[31m--- lỗi tải ảnh lên: ${result.error} ---\x1b[0m\r\n`);
+          }
+          return;
         }
+
+        const reference = /\s/.test(filePath) ? `"${filePath}"` : `@${filePath}`;
+        pane.term.paste(reference);
+        this._showPastePreview(pane, dataUrl);
         return;
       }
 
-      const reference = /\s/.test(filePath) ? `"${filePath}"` : `@${filePath}`;
-      pane.term.paste(reference);
-      this._showPastePreview(pane, dataUrl);
-      return;
+      const text = await window.api.clipboard.readText();
+      if (text) pane.term.paste(text);
+    } catch (err) {
+      pane.term.write(`\r\n\x1b[31m--- lỗi dán: ${err?.message || err} ---\x1b[0m\r\n`);
     }
-
-    const text = await window.api.clipboard.readText();
-    if (text) pane.term.paste(text);
   }
 
-  /** The nho xem truoc anh vua dan, tu bien mat sau vai giay - xac nhan dung anh da dan. */
+  /**
+   * The nho xem truoc anh vua dan, tu bien mat sau vai giay - xac nhan dung
+   * anh da dan. Boc try/catch va ghi loi ra thang terminal (khong chi console
+   * - console khong ai thay tren ban build that) vi day la buoc phu, khong
+   * duoc phep lam vo hieu ca luong dan chinh neu no gap loi vi ly do gi do.
+   */
   _showPastePreview(pane, dataUrl) {
-    document.querySelector('.screenshot-preview')?.remove();
+    try {
+      document.querySelector('.screenshot-preview')?.remove();
 
-    const card = document.createElement('div');
-    card.className = 'screenshot-preview';
-    card.innerHTML = `
-      <img src="${dataUrl}" alt="Ảnh vừa dán" />
-      <span>Đã dán ảnh vào terminal</span>`;
-    document.body.append(card);
+      const card = document.createElement('div');
+      card.className = 'screenshot-preview';
+      card.innerHTML = `
+        <img src="${dataUrl}" alt="Ảnh vừa dán" />
+        <span>Đã dán ảnh vào terminal</span>`;
+      document.body.append(card);
 
-    const rect = pane.element.getBoundingClientRect();
-    card.style.left = `${Math.max(8, rect.right - 228)}px`;
-    card.style.top = `${rect.top + 8}px`;
+      const rect = pane.element.getBoundingClientRect();
+      card.style.left = `${Math.max(8, rect.right - 228)}px`;
+      card.style.top = `${rect.top + 8}px`;
+      card.style.zIndex = '9999';
 
-    card.addEventListener('click', () => card.remove());
-    setTimeout(() => card.remove(), 4000);
+      card.addEventListener('click', () => card.remove());
+      setTimeout(() => card.remove(), 4000);
+    } catch (err) {
+      pane.term.write(`\r\n\x1b[31m--- lỗi hiện thẻ xem trước ảnh: ${err?.message || err} ---\x1b[0m\r\n`);
+    }
   }
 
   /** Dan tu clipboard he thong vao dung pane theo id - dung cho muc "Dán" tren menu chuot phai. */
