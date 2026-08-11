@@ -56,11 +56,13 @@ class ThemeManager {
       this.toggleButton.title = `Giao diện: ${LABEL[preference]} — bấm để đổi`;
     }
 
-    // Doc mau sau khi trinh duyet ap dung xong bien cua theme moi.
-    requestAnimationFrame(() => {
-      const palette = this.terminalTheme();
-      for (const listener of this.listeners) listener(palette, theme);
-    });
+    // getComputedStyle() doc bien CSS moi ngay lap tuc, khong can cho frame
+    // ve nao ca - tung boc trong requestAnimationFrame() nhung callback do
+    // khong dang tin cay chay dung luc trong app nay (xac nhan qua debug: cua
+    // so khong lien tuc ve lai thi rAF co the bi hoan vo thoi han), khien
+    // terminal dang mo giu nguyen mau theme cu sau khi doi sang/toi.
+    const palette = this.terminalTheme();
+    for (const listener of this.listeners) listener(palette, theme);
   }
 
   /** Bang mau cho xterm, lay thang tu bien CSS de hai ben khong lech nhau. */

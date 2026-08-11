@@ -129,10 +129,15 @@
 
   --surface-titlebar: #201e17;
 
+  /* --text-tertiary cu (#7d766a) chi dat ~3.7-3.9:1 tren nen toi - duoi
+     nguong 4.5:1 cua WCAG AA cho chu thuong, trong khi day la mau dung rat
+     nhieu cho chu phu/subtitle (vd dong "N phien - thoi gian" o sidebar).
+     Nang len #948c7d (~4.5-5.3:1 tren moi nen toi) va don --text-quaternary
+     xuong nhan gia tri cu cua tertiary, van giu dung 4 cap do dam nhat. */
   --text-primary: #ede9e0;
   --text-secondary: #b0a99a;
-  --text-tertiary: #7d766a;
-  --text-quaternary: #5c5648;
+  --text-tertiary: #948c7d;
+  --text-quaternary: #7d766a;
 
   --border-subtle: rgba(255, 255, 255, 0.06);
   --border-default: rgba(255, 255, 255, 0.11);
