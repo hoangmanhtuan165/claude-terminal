@@ -34,6 +34,8 @@ const ICON_PATHS = {
   diamond:
     '<rect x="3" y="3" width="10" height="10" rx="2" transform="rotate(45 8 8)"/><path d="M6.2 5v6M6.2 8l2.6-3M6.2 8l2.6 3"/>',
   bolt: '<path d="M9 1.5 3.5 9h3.2L6 14.5 12.5 7H9.3L9 1.5Z"/>',
+  paperclip:
+    '<path d="M11.2 4.2 5.6 9.8a2.3 2.3 0 0 0 3.3 3.3l5.6-5.6a3.7 3.7 0 0 0-5.2-5.2L3.7 7.9a5.1 5.1 0 0 0 7.2 7.2"/>',
   camera:
     '<path d="M2 5.5a1 1 0 0 1 1-1h1.8l.9-1.4h4.6l.9 1.4H13a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-7Z"/><circle cx="8" cy="9" r="2.6"/>',
   copy: '<rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/><path d="M3.5 10.5H2.8a1 1 0 0 1-1-1V2.8a1 1 0 0 1 1-1h6.7a1 1 0 0 1 1 1v.7"/>',

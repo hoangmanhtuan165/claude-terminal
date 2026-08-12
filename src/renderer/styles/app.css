@@ -1793,6 +1793,27 @@ details.block pre {
   background: var(--bg-hover);
 }
 
+/* --- Thanh nut noi goc pane: chen file + bypass permissions --------------- */
+
+.pane-toolbar {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  z-index: 5;
+  display: flex;
+  gap: var(--sp-1);
+}
+
+.pane-toolbar-btn {
+  background: var(--bg-overlay);
+  border: 1px solid var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.pane-toolbar-btn:hover {
+  background: var(--bg-hover);
+}
+
 /* --- Cham "dang mo" tren sidebar ------------------------------------------ */
 
 .project-dot.is-open {

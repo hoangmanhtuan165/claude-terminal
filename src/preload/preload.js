@@ -191,6 +191,7 @@ contextBridge.exposeInMainWorld('api', {
         return null;
       }
     },
+    pickAttachments: () => ipcRenderer.invoke('files:pickAttachments'),
   },
 
   menu: {

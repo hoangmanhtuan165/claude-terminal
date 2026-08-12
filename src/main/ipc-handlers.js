@@ -324,6 +324,17 @@ function register(getWindow) {
     return filePaths[0];
   });
 
+  /** Chon file de chen duong dan (@...) vao terminal - nut "chen file" canh o nhap. */
+  ipcMain.handle('files:pickAttachments', async () => {
+    const win = getWindow();
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Chọn file để chèn vào terminal',
+      properties: ['openFile', 'multiSelections'],
+    });
+    if (canceled) return [];
+    return filePaths;
+  });
+
   // --- May chu SSH -----------------------------------------------------------
 
   ipcMain.handle('ssh:list', () => sshStore.listHosts());
