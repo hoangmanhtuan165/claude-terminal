@@ -501,6 +501,13 @@ body[data-platform='darwin'] .titlebar {
   animation: pulse-soft 1.1s ease-in-out infinite;
 }
 
+/* Nut bypass permissions trong hang go nhanh, dang bat cho du an hien tai. */
+.quick-chip-icon.is-active {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+
 @keyframes pulse-soft {
   0%,
   100% {

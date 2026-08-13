@@ -34,12 +34,23 @@ const MODEL_CHOICES = [
 const DEFAULT_QUICK_ITEMS = ['tiếp tục', 'tiếp', 'ok', '/compact', 'lỗi'];
 
 class QuickSend {
-  constructor({ quickBarElement, sshQuickBarElement, modelButton, modelLabel, getActivePane, onNeedTerminal }) {
+  constructor({
+    quickBarElement,
+    sshQuickBarElement,
+    modelButton,
+    modelLabel,
+    getActivePane,
+    onPickFiles,
+    onToggleSkipPermissions,
+    onNeedTerminal,
+  }) {
     this.quickBar = quickBarElement;
     this.sshBar = sshQuickBarElement || null;
     this.modelButton = modelButton;
     this.modelLabel = modelLabel;
     this.getActivePane = getActivePane;
+    this.onPickFiles = onPickFiles || (() => {});
+    this.onToggleSkipPermissions = onToggleSkipPermissions || (() => {});
     this.onNeedTerminal = onNeedTerminal || (() => {});
 
     this.items = [...DEFAULT_QUICK_ITEMS];
@@ -101,6 +112,12 @@ class QuickSend {
       </button>
       <button class="quick-chip quick-chip-edit" data-action="edit" title="Sửa danh sách nút gõ nhanh">
         ${window.icons.svg('pencil', { size: 12 })}
+      </button>
+      <button class="quick-chip quick-chip-icon" data-action="attach" title="Chèn file vào terminal">
+        ${window.icons.svg('paperclip', { size: 13 })}
+      </button>
+      <button class="quick-chip quick-chip-icon" data-action="skip-permissions" title="Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này">
+        ${window.icons.svg('bolt', { size: 13 })}
       </button>`;
 
     for (const button of this.quickBar.querySelectorAll('[data-index]')) {
@@ -120,6 +137,29 @@ class QuickSend {
     this.quickBar
       .querySelector('[data-action="library"]')
       ?.addEventListener('click', (event) => this._openLibrary(event.currentTarget));
+
+    this.quickBar.querySelector('[data-action="attach"]')?.addEventListener('click', () => {
+      const pane = this.getActivePane();
+      if (pane) this.onPickFiles(pane);
+    });
+
+    this.skipPermissionsButton = this.quickBar.querySelector('[data-action="skip-permissions"]');
+    this.skipPermissionsButton?.addEventListener('click', () => {
+      const pane = this.getActivePane();
+      if (pane) this.onToggleSkipPermissions(pane);
+    });
+    this.refreshSkipPermissionsButton();
+  }
+
+  /** Dong bo icon nut bypass permissions voi trang thai cua pane dang active. */
+  refreshSkipPermissionsButton() {
+    if (!this.skipPermissionsButton) return;
+    const pane = this.getActivePane();
+    const on = Boolean(pane?.skipPermissions);
+    this.skipPermissionsButton.classList.toggle('is-active', on);
+    this.skipPermissionsButton.title = on
+      ? 'Đang bỏ qua xin quyền (--dangerously-skip-permissions) - bấm để tắt cho dự án này'
+      : 'Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này';
   }
 
   // --- Hang lenh nhanh rieng cho tab SSH -------------------------------------
