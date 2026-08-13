@@ -494,6 +494,11 @@ body[data-platform='darwin'] .titlebar {
   color: var(--text-secondary);
 }
 
+/* Day nut chen file/bypass permissions ve sat mep phai hang go nhanh. */
+.quick-bar-spacer {
+  flex: 1 1 12px;
+}
+
 .quick-chip-icon.is-waiting {
   color: var(--accent);
   background: var(--accent-soft);

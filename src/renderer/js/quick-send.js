@@ -113,6 +113,7 @@ class QuickSend {
       <button class="quick-chip quick-chip-edit" data-action="edit" title="Sửa danh sách nút gõ nhanh">
         ${window.icons.svg('pencil', { size: 12 })}
       </button>
+      <span class="quick-bar-spacer"></span>
       <button class="quick-chip quick-chip-icon" data-action="attach" title="Chèn file vào terminal">
         ${window.icons.svg('paperclip', { size: 13 })}
       </button>
