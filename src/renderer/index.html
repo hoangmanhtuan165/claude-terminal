@@ -227,7 +227,18 @@
           <span class="status-icon" data-icon="terminal-prompt"></span>
           <span id="status-shell"></span>
         </span>
-        <span class="status-item status-right">
+        <!--
+          Chen file + bypass permissions: dat canh nhau o cuoi thanh trang
+          thai, luon thay ma khong can dua chuot vao pane. Thao tac tren
+          PANE DANG ACTIVE - xem wireStatusActions() trong app.js.
+        -->
+        <button id="attach-file-button" class="status-item status-button status-right" title="Chèn file vào terminal">
+          <span class="status-icon" data-icon="paperclip"></span>
+        </button>
+        <button id="skip-permissions-button" class="status-item status-button" title="Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này">
+          <span class="status-icon" data-icon="bolt"></span>
+        </button>
+        <span class="status-item">
           <span class="status-icon" data-icon="clock"></span>
           <span id="status-history"></span>
         </span>

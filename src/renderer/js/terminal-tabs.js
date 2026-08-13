@@ -306,30 +306,6 @@ class TerminalTabs {
       scrollBtn.classList.toggle('is-hidden', atBottom);
     });
 
-    // Thanh nut noi goc tren-phai pane: chen file + bat/tat bypass permissions.
-    const paneToolbar = document.createElement('div');
-    paneToolbar.className = 'pane-toolbar';
-
-    const attachBtn = document.createElement('button');
-    attachBtn.className = 'icon-btn pane-toolbar-btn';
-    attachBtn.title = 'Chèn file vào terminal';
-    attachBtn.innerHTML = window.icons.svg('paperclip', { size: 14 });
-    attachBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      this._pickAndInsertFiles(pane);
-    });
-
-    const skipBtn = document.createElement('button');
-    skipBtn.className = 'icon-btn pane-toolbar-btn';
-    skipBtn.innerHTML = window.icons.svg('bolt', { size: 14 });
-    skipBtn.addEventListener('click', (event) => {
-      event.stopPropagation();
-      this._toggleSkipPermissionsForPane(pane);
-    });
-
-    paneToolbar.append(attachBtn, skipBtn);
-    wrapper.append(paneToolbar);
-
     // Khong dua vao su kien 'paste' cua trinh duyet - trong app nay no khong
     // bao gio ban ra du textarea dang focus dung (kiem chung rieng). Tu bat
     // Ctrl+V/Cmd+V va doc thang clipboard cua he thong thay vi cho su kien do.
@@ -420,7 +396,6 @@ class TerminalTabs {
       term,
       fitAddon,
       searchAddon,
-      skipBtn,
       // Theo doi khoang lang de bao "co ket qua moi" - xem _trackPaneActivity.
       lastOutputAt: 0,
       notifyArmed: true,
@@ -433,18 +408,8 @@ class TerminalTabs {
 
     if (pane.resumeHint) this._showResumeBanner(pane);
 
-    this._updateSkipButton(skipBtn, pane);
     this.panes.set(id, pane);
     return pane;
-  }
-
-  /** Dong bo icon/tooltip cua nut bypass permissions voi trang thai hien tai cua pane. */
-  _updateSkipButton(skipBtn, pane) {
-    const on = Boolean(pane.skipPermissions);
-    skipBtn.classList.toggle('is-skip-on', on);
-    skipBtn.title = on
-      ? 'Đang bỏ qua xin quyền (--dangerously-skip-permissions) - bấm để tắt cho dự án này'
-      : 'Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này';
   }
 
   /** Banner "Nối tiếp phiên claude" đè lên góc trên của pane vừa phục hồi thành shell trần. */
@@ -535,8 +500,8 @@ class TerminalTabs {
       pane.cwd = info.cwd;
       pane.alive = true;
       pane.skipPermissions = Boolean(info.skipPermissions);
-      if (pane.skipBtn) this._updateSkipButton(pane.skipBtn, pane);
       this._renderStrip();
+      this.onSkipPermissionsChanged?.();
     } catch (err) {
       pane.alive = false;
       pane.term.write(`\r\n\x1b[31mKhông mở được phiên: ${err.message}\x1b[0m\r\n`);
@@ -711,7 +676,7 @@ class TerminalTabs {
    * chen thang @localPath - giong het co che _pasteFromClipboard nhung nguon
    * la dialog thay vi clipboard.
    */
-  async _pickAndInsertFiles(pane) {
+  async pickAndInsertFiles(pane) {
     try {
       const filePaths = await window.api.files.pickAttachments();
       if (!filePaths || filePaths.length === 0) return;
@@ -744,7 +709,7 @@ class TerminalTabs {
    * chi la loi tat truy cap nhanh tu ngay terminal. Chi anh huong tab Claude
    * MOI mo sau do, khong doi duoc phien dang chay.
    */
-  async _toggleSkipPermissionsForPane(pane) {
+  async toggleSkipPermissionsForPane(pane) {
     if (!pane.cwd) return;
 
     if (!pane.skipPermissions) {
@@ -758,10 +723,10 @@ class TerminalTabs {
     for (const p of this.panes.values()) {
       if (String(p.cwd).toLowerCase() === String(pane.cwd).toLowerCase()) {
         p.skipPermissions = nowOn;
-        if (p.skipBtn) this._updateSkipButton(p.skipBtn, p);
       }
     }
     this._renderStrip();
+    this.onSkipPermissionsChanged?.();
     return nowOn;
   }
 

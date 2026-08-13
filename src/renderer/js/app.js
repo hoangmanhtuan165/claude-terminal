@@ -44,6 +44,8 @@ const dom = {
   updateButton: el('update-button'),
   statusUpdate: el('status-update'),
   statusBranch: el('status-branch'),
+  attachFileButton: el('attach-file-button'),
+  skipPermissionsButton: el('skip-permissions-button'),
 };
 
 const historyElements = {
@@ -137,6 +139,12 @@ let branchRequestSeq = 0;
 function updateStatusBar() {
   const tab = terminalTabs.activeTab;
   dom.statusCwd.textContent = tab?.cwd || '—';
+
+  const skipOn = Boolean(tab?.skipPermissions);
+  dom.skipPermissionsButton.classList.toggle('is-warning', skipOn);
+  dom.skipPermissionsButton.title = skipOn
+    ? 'Đang bỏ qua xin quyền (--dangerously-skip-permissions) - bấm để tắt cho dự án này'
+    : 'Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này';
   // Ô tìm bám theo tab đang mở, nên đổi tab là phải tìm lại.
   terminalFind?.handleTabChange();
   // Model được nhớ theo từng dự án nên đổi tab là nhãn phải đổi theo.
@@ -314,6 +322,16 @@ async function bootstrap() {
     broadcastButton: dom.btnBroadcast,
     themeManager,
     onChange: updateStatusBar,
+  });
+  terminalTabs.onSkipPermissionsChanged = updateStatusBar;
+
+  dom.attachFileButton.addEventListener('click', () => {
+    const pane = terminalTabs.activePane;
+    if (pane) terminalTabs.pickAndInsertFiles(pane);
+  });
+  dom.skipPermissionsButton.addEventListener('click', () => {
+    const pane = terminalTabs.activePane;
+    if (pane) terminalTabs.toggleSkipPermissionsForPane(pane);
   });
 
   await terminalTabs.loadFontSize();
