@@ -114,6 +114,9 @@ class QuickSend {
         ${window.icons.svg('pencil', { size: 12 })}
       </button>
       <span class="quick-bar-spacer"></span>
+      <button class="quick-chip quick-chip-icon" data-action="expand-prompt" title="Gửi dòng đang gõ, rồi nhờ Claude gợi ý cách hỏi rõ ràng/chi tiết hơn cho lần sau">
+        ${window.icons.svg('sparkle', { size: 13 })}
+      </button>
       <button class="quick-chip quick-chip-icon" data-action="attach" title="Chèn file vào terminal">
         ${window.icons.svg('paperclip', { size: 13 })}
       </button>
@@ -143,6 +146,10 @@ class QuickSend {
       const pane = this.getActivePane();
       if (pane) this.onPickFiles(pane);
     });
+
+    this.quickBar
+      .querySelector('[data-action="expand-prompt"]')
+      ?.addEventListener('click', () => this._expandPrompt());
 
     this.skipPermissionsButton = this.quickBar.querySelector('[data-action="skip-permissions"]');
     this.skipPermissionsButton?.addEventListener('click', () => {
@@ -370,6 +377,46 @@ class QuickSend {
 
     card.addEventListener('click', () => card.remove());
     setTimeout(() => card.remove(), 4000);
+  }
+
+  /**
+   * Doc dong con tro dang dung (dong nguoi dung go do, chua Enter) tu buffer
+   * xterm, roi nho chinh Claude Code dang chay viet lai thanh mot prompt ro
+   * rang/chi tiet hon.
+   *
+   * KHONG tu xoa dong dang go: da kiem chung bang CDP rang terminal khong the
+   * biet chinh xac ranh gioi giua "prompt cua shell" (vd `PS C:\...>`) va
+   * "phan nguoi dung go" - xoa bang Backspace/Ctrl+U deu co nguy co xoa qua
+   * da vao ca prompt shell. Vi vay chi con cach an toan la CHOT dong dang go
+   * (Enter that) roi hoi tiep - dong nghia dong goc CUNG duoc gui that, khong
+   * chi la xem truoc.
+   */
+  _expandPrompt() {
+    const pane = this.getActivePane();
+    if (!pane) return;
+
+    // Chi co y nghia trong phien Claude Code - tab shell/ssh tran hieu moi
+    // dong go la LENH he dieu hanh, khong phai hoi thoai, nen se bao loi
+    // "not recognized" thay vi tra loi nhu mong doi.
+    if (pane.sessionType !== 'claude' && pane.sessionType !== 'claude-resume') {
+      pane.term.write(
+        '\r\n\x1b[31m--- chỉ dùng được trong tab Claude Code, không dùng được ở tab shell/SSH trần ---\x1b[0m\r\n',
+      );
+      return;
+    }
+
+    const buffer = pane.term.buffer.active;
+    const cursorAbsoluteY = buffer.baseY + buffer.cursorY;
+    const draft = buffer.getLine(cursorAbsoluteY)?.translateToString(true).trim();
+    if (!draft) return;
+
+    this.onNeedTerminal();
+    window.api.pty.write(pane.id, '\r');
+    window.api.pty.write(
+      pane.id,
+      `Viết lại yêu cầu vừa rồi thành một prompt rõ ràng, chi tiết, đầy đủ ngữ cảnh hơn cho lần hỏi sau - chỉ đề xuất cách hỏi tốt hơn, chưa cần thực hiện ngay.\r`,
+    );
+    requestAnimationFrame(() => pane.term.focus());
   }
 
   /**

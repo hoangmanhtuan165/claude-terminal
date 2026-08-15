@@ -1,6 +1,6 @@
 {
   "name": "claude-terminal",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Terminal desktop cho Claude Code tren Windows, co luu va tra cuu lich su phien lam viec",
   "main": "src/main/main.js",
   "scripts": {
