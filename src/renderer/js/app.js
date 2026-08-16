@@ -213,6 +213,11 @@ function paletteActions() {
         run: () => openTerminal({ cwd: terminalTabs.activeTab?.cwd, sessionType: 'shell' }),
       },
       {
+        icon: 'sparkle',
+        title: 'Tab Grok CLI mới',
+        run: () => openTerminal({ cwd: terminalTabs.activeTab?.cwd, sessionType: 'grok' }),
+      },
+      {
         icon: 'split',
         title: 'Chia đôi màn hình terminal',
         hint: 'Ctrl+\\',

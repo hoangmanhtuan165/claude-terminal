@@ -2340,6 +2340,12 @@ details.block pre {
   box-shadow: 0 0 0 3px rgba(31, 122, 118, 0.18);
 }
 
+/* Phien Grok CLI - mau rieng de phan biet voi claude/ssh tren thanh tab */
+.tab-dot[data-type='grok'] {
+  background: var(--term-magenta);
+  box-shadow: 0 0 0 3px rgba(139, 63, 181, 0.18);
+}
+
 /* --- Modal dung chung (form them/sua may chu SSH) ------------------------- */
 
 .modal-overlay {

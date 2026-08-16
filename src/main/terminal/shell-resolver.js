@@ -162,6 +162,8 @@ function wrapWithReconnect(shellKind, sshCmd) {
  * - shell        : chi mo shell tran
  * - claude       : mo phien claude moi
  * - claude-resume: noi tiep mot phien cu theo session id
+ * - grok         : mo phien Grok CLI moi (khong co skip-permissions rieng -
+ *                  dac thu do chi ap dung cho Claude, xem pty-manager.js)
  * - ssh          : ket noi toi may chu da luu (options.sshHost)
  */
 function startupCommandFor(sessionType, options = {}) {
@@ -175,6 +177,7 @@ function startupCommandFor(sessionType, options = {}) {
     }
     return `claude --resume ${id}${skipFlag}`;
   }
+  if (sessionType === 'grok') return 'grok';
   if (sessionType === 'ssh') {
     if (!options.sshHost) throw new Error('Thiếu hồ sơ SSH để kết nối');
     const cmd = sshCommandFor(options.sshHost);

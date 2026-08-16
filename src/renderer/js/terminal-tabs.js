@@ -785,6 +785,7 @@ class TerminalTabs {
     const folder = window.formatUtils.baseName(cwd) || 'home';
     if (sessionType === 'claude') return `claude · ${folder}`;
     if (sessionType === 'claude-resume') return `resume · ${folder}`;
+    if (sessionType === 'grok') return `grok · ${folder}`;
     if (sessionType === 'ssh') return 'ssh';
     return `shell · ${folder}`;
   }
@@ -987,10 +988,20 @@ class TerminalTabs {
     if (!tab) return;
 
     const alivePane = tab.panes.find(
-      (p) => p.alive && (p.sessionType === 'claude' || p.sessionType === 'claude-resume' || p.sessionType === 'ssh'),
+      (p) =>
+        p.alive &&
+        (p.sessionType === 'claude' ||
+          p.sessionType === 'claude-resume' ||
+          p.sessionType === 'grok' ||
+          p.sessionType === 'ssh'),
     );
     if (alivePane && !skipConfirm) {
-      const what = alivePane.sessionType === 'ssh' ? 'đang kết nối SSH' : 'đang chạy Claude';
+      const what =
+        alivePane.sessionType === 'ssh'
+          ? 'đang kết nối SSH'
+          : alivePane.sessionType === 'grok'
+            ? 'đang chạy Grok'
+            : 'đang chạy Claude';
       const ok = window.confirm(`Tab "${tab.title}" ${what}. Đóng tab này?`);
       if (!ok) return;
     }
