@@ -314,6 +314,7 @@ class ProjectsSidebar {
           cwd,
           isPinned,
           skipPermissions: Boolean(project?.skipPermissions),
+          autoMode: Boolean(project?.autoMode),
         });
       });
     }

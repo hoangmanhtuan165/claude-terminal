@@ -167,15 +167,21 @@ function wrapWithReconnect(shellKind, sshCmd) {
  * - ssh          : ket noi toi may chu da luu (options.sshHost)
  */
 function startupCommandFor(sessionType, options = {}) {
-  const skipFlag = options.skipPermissions ? ' --dangerously-skip-permissions' : '';
-  if (sessionType === 'claude') return `claude${skipFlag}`;
+  // Uu tien skipPermissions neu ca hai vi ly do gi do cung true - bypass hoan
+  // toan "manh" hon auto, an toan hon khi phai chon mot trong hai lam mac dinh.
+  const permissionFlag = options.skipPermissions
+    ? ' --dangerously-skip-permissions'
+    : options.autoMode
+      ? ' --permission-mode auto'
+      : '';
+  if (sessionType === 'claude') return `claude${permissionFlag}`;
   if (sessionType === 'claude-resume') {
     const id = String(options.resumeSessionId || '').trim();
     // Chi nhan dinh dang UUID: gia tri nay di thang vao dong lenh shell.
     if (!/^[a-fA-F0-9-]{8,64}$/.test(id)) {
       throw new Error(`Session id khong hop le: ${options.resumeSessionId}`);
     }
-    return `claude --resume ${id}${skipFlag}`;
+    return `claude --resume ${id}${permissionFlag}`;
   }
   if (sessionType === 'grok') return 'grok';
   if (sessionType === 'ssh') {

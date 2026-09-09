@@ -513,6 +513,14 @@ body[data-platform='darwin'] .titlebar {
   border-color: var(--danger);
 }
 
+/* Nut che do Auto trong hang go nhanh, dang bat cho du an hien tai - mau nhe
+   hon bypass permissions vi Auto van dung lai hoi khi gap viec rui ro. */
+.quick-chip-icon.is-auto-on {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
 @keyframes pulse-soft {
   0%,
   100% {

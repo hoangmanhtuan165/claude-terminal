@@ -128,6 +128,7 @@ function register(getWindow) {
     const withSkipFlag = (p) => ({
       ...p,
       skipPermissions: workspaceStore.isSkipPermissionsProject(p.cwd, settings),
+      autoMode: workspaceStore.isAutoModeProject(p.cwd, settings),
     });
 
     const allProjects = historyIndex.listProjects();
@@ -175,6 +176,7 @@ function register(getWindow) {
   ipcMain.handle('projects:toggleSkipPermissions', (_event, { cwd }) =>
     workspaceStore.toggleSkipPermissions(cwd),
   );
+  ipcMain.handle('projects:toggleAutoMode', (_event, { cwd }) => workspaceStore.toggleAutoMode(cwd));
 
   /**
    * Menu chuot phai tren hang du an. Dung Menu native cua Windows thay vi tu
@@ -183,7 +185,7 @@ function register(getWindow) {
    * pin/skip-permissions thi lam thang o day roi bao renderer nap lai qua
    * `projects:changed`.
    */
-  ipcMain.handle('projects:showContextMenu', (_event, { cwd, isPinned, skipPermissions }) => {
+  ipcMain.handle('projects:showContextMenu', (_event, { cwd, isPinned, skipPermissions, autoMode }) => {
     const win = getWindow();
     if (!win) return;
 
@@ -250,6 +252,25 @@ function register(getWindow) {
             if (choice !== 1) return;
           }
           workspaceStore.toggleSkipPermissions(cwd);
+          notifyChanged();
+        },
+      },
+      {
+        label: autoMode ? 'Tắt chế độ Auto (--permission-mode auto)' : 'Bật chế độ Auto (--permission-mode auto)',
+        click: () => {
+          if (!autoMode) {
+            const choice = dialog.showMessageBoxSync(win, {
+              type: 'warning',
+              buttons: ['Huỷ', 'Bật'],
+              defaultId: 0,
+              cancelId: 0,
+              message: 'Bật --permission-mode auto cho dự án này?',
+              detail:
+                'Claude sẽ tự động duyệt các hành động được đánh giá an toàn, cho mọi tab Claude mở mới trong thư mục này - vẫn dừng lại hỏi khi gặp việc rủi ro. Nhẹ hơn --dangerously-skip-permissions.',
+            });
+            if (choice !== 1) return;
+          }
+          workspaceStore.toggleAutoMode(cwd);
           notifyChanged();
         },
       },

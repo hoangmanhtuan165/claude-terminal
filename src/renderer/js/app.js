@@ -143,6 +143,7 @@ function updateStatusBar() {
   quickSend?.refreshModelLabel();
   quickSend?.refreshSshBar();
   quickSend?.refreshSkipPermissionsButton();
+  quickSend?.refreshAutoModeButton();
   // Chấm "đang mở" trên sidebar phải theo kịp khi tab mới mở/đóng.
   projectsSidebar?.render();
   sshSidebar?.render();
@@ -321,9 +322,10 @@ async function bootstrap() {
     themeManager,
     onChange: updateStatusBar,
   });
-  terminalTabs.onSkipPermissionsChanged = () => {
+  terminalTabs.onPermissionModeChanged = () => {
     updateStatusBar();
     quickSend?.refreshSkipPermissionsButton();
+    quickSend?.refreshAutoModeButton();
   };
 
   await terminalTabs.loadFontSize();
@@ -373,6 +375,7 @@ async function bootstrap() {
     getActivePane: () => terminalTabs.activePane,
     onPickFiles: (pane) => terminalTabs.pickAndInsertFiles(pane),
     onToggleSkipPermissions: (pane) => terminalTabs.toggleSkipPermissionsForPane(pane),
+    onToggleAutoMode: (pane) => terminalTabs.toggleAutoModeForPane(pane),
     onNeedTerminal: () => showScreen('terminal'),
   });
   await quickSend.loadPrefs();

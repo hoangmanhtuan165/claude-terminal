@@ -90,10 +90,11 @@ function create({ tabId, cwd, sessionType = 'shell', resumeSessionId, sshHostId,
   const shell = resolveShell();
   const workingDir = resolveCwd(cwd);
   // Chi ap dung cho phien claude/claude-resume - shell tran khong lien quan gi
-  // toi cai nay.
-  const skipPermissions =
-    (sessionType === 'claude' || sessionType === 'claude-resume') &&
-    workspaceStore.isSkipPermissionsProject(workingDir);
+  // toi cac co nay. skipPermissions/autoMode loai tru lan nhau (dam bao o
+  // workspace-store.js) nen khong bao gio ca hai cung true.
+  const isClaudeSession = sessionType === 'claude' || sessionType === 'claude-resume';
+  const skipPermissions = isClaudeSession && workspaceStore.isSkipPermissionsProject(workingDir);
+  const autoMode = isClaudeSession && workspaceStore.isAutoModeProject(workingDir);
 
   let sshHost = null;
   if (sessionType === 'ssh') {
@@ -105,6 +106,7 @@ function create({ tabId, cwd, sessionType = 'shell', resumeSessionId, sshHostId,
   const startupCommand = startupCommandFor(sessionType, {
     resumeSessionId,
     skipPermissions,
+    autoMode,
     sshHost,
     shellKind: shell.kind,
   });
@@ -148,6 +150,7 @@ function create({ tabId, cwd, sessionType = 'shell', resumeSessionId, sshHostId,
     shell: shell.path,
     sessionType,
     skipPermissions,
+    autoMode,
     sshHostName: sshHost?.name || null,
   };
 }

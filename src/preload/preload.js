@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('api', {
     hide: (cwd) => ipcRenderer.invoke('projects:hide', { cwd }),
     browse: () => ipcRenderer.invoke('projects:browse'),
     toggleSkipPermissions: (cwd) => ipcRenderer.invoke('projects:toggleSkipPermissions', { cwd }),
+    toggleAutoMode: (cwd) => ipcRenderer.invoke('projects:toggleAutoMode', { cwd }),
     showContextMenu: (payload) => ipcRenderer.invoke('projects:showContextMenu', payload),
     onChanged: (callback) => subscribe('projects:changed', callback),
   },

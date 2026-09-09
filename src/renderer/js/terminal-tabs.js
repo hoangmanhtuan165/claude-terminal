@@ -500,8 +500,9 @@ class TerminalTabs {
       pane.cwd = info.cwd;
       pane.alive = true;
       pane.skipPermissions = Boolean(info.skipPermissions);
+      pane.autoMode = Boolean(info.autoMode);
       this._renderStrip();
-      this.onSkipPermissionsChanged?.();
+      this.onPermissionModeChanged?.();
     } catch (err) {
       pane.alive = false;
       pane.term.write(`\r\n\x1b[31mKhông mở được phiên: ${err.message}\x1b[0m\r\n`);
@@ -723,10 +724,41 @@ class TerminalTabs {
     for (const p of this.panes.values()) {
       if (String(p.cwd).toLowerCase() === String(pane.cwd).toLowerCase()) {
         p.skipPermissions = nowOn;
+        // Bat Bypass tu tat Auto cho cung du an - hai co nay loai tru lan
+        // nhau, backend (workspace-store.js) da dam bao dieu nay; dong bo lai
+        // o phia renderer de nut Auto trong quick-bar cap nhat ngay lap tuc.
+        if (nowOn) p.autoMode = false;
       }
     }
     this._renderStrip();
-    this.onSkipPermissionsChanged?.();
+    this.onPermissionModeChanged?.();
+    return nowOn;
+  }
+
+  /**
+   * Nut "che do Auto" canh pane: bat/tat --permission-mode auto cho DU AN cua
+   * pane nay - loai tru lan nhau voi bypass permissions, xem ghi chu o
+   * toggleSkipPermissionsForPane.
+   */
+  async toggleAutoModeForPane(pane) {
+    if (!pane.cwd) return;
+
+    if (!pane.autoMode) {
+      const confirmed = window.confirm(
+        'Bật --permission-mode auto cho dự án này?\n\nClaude sẽ tự động duyệt các hành động được đánh giá an toàn, cho mọi tab Claude mở mới trong thư mục này - vẫn dừng lại hỏi khi gặp việc rủi ro.',
+      );
+      if (!confirmed) return;
+    }
+
+    const nowOn = Boolean(await window.api.projects.toggleAutoMode(pane.cwd));
+    for (const p of this.panes.values()) {
+      if (String(p.cwd).toLowerCase() === String(pane.cwd).toLowerCase()) {
+        p.autoMode = nowOn;
+        if (nowOn) p.skipPermissions = false;
+      }
+    }
+    this._renderStrip();
+    this.onPermissionModeChanged?.();
     return nowOn;
   }
 

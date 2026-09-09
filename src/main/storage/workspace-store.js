@@ -19,6 +19,11 @@ const DEFAULT_SETTINGS = {
   // tab claude moi mo trong thu muc nay se tu dong bo qua toan bo xin quyen.
   // Chi anh huong tab MOI, khong doi duoc tien trinh dang chay san.
   skipPermissionsProjects: [],
+  // Du an nguoi dung chon mo claude voi --permission-mode auto - tu duyet
+  // hanh dong an toan (qua bo phan loai rui ro cua Claude), van dung lai hoi
+  // khi gap viec rui ro - khac voi skipPermissionsProjects o tren la KHONG
+  // BAO GIO hoi gi ca. Loai tru lan nhau: xem toggleAutoMode/toggleSkipPermissions.
+  autoModeProjects: [],
   // Bam nut dong cua so thi thu nho vao khay he thong thay vi thoat han - PTY
   // dang chay (vi du ssh deploy dai) khong bi giet giua chung. Mac dinh tat:
   // hanh vi nay khac thong le Windows thong thuong nen phai nguoi dung tu bat.
@@ -147,16 +152,55 @@ function isSkipPermissionsProject(cwd, settings = getSettings()) {
   );
 }
 
-/** Bat/tat --dangerously-skip-permissions cho mot du an. Tra ve trang thai moi. */
+/**
+ * Bat/tat --dangerously-skip-permissions cho mot du an. Tra ve trang thai moi.
+ * Loai tru voi che do Auto: bat Bypass thi tu tat Auto cho cung du an, vi hai
+ * co nay xung dot khi truyen cung luc cho CLI.
+ */
 function toggleSkipPermissions(cwd) {
   const settings = getSettings();
   const normalized = path.resolve(cwd);
+  const key = normalized.toLowerCase();
   const list = settings.skipPermissionsProjects || [];
   const isOn = isSkipPermissionsProject(normalized, settings);
-  const next = isOn
-    ? list.filter((p) => path.resolve(p).toLowerCase() !== normalized.toLowerCase())
+  const nextSkip = isOn
+    ? list.filter((p) => path.resolve(p).toLowerCase() !== key)
     : [...list, normalized];
-  updateSettings({ skipPermissionsProjects: next });
+  const patch = { skipPermissionsProjects: nextSkip };
+  if (!isOn) {
+    patch.autoModeProjects = (settings.autoModeProjects || []).filter(
+      (p) => path.resolve(p).toLowerCase() !== key,
+    );
+  }
+  updateSettings(patch);
+  return !isOn;
+}
+
+function isAutoModeProject(cwd, settings = getSettings()) {
+  const normalized = path.resolve(cwd).toLowerCase();
+  return (settings.autoModeProjects || []).some((p) => path.resolve(p).toLowerCase() === normalized);
+}
+
+/**
+ * Bat/tat --permission-mode auto cho mot du an. Tra ve trang thai moi.
+ * Loai tru voi Bypass permissions - xem ghi chu o toggleSkipPermissions.
+ */
+function toggleAutoMode(cwd) {
+  const settings = getSettings();
+  const normalized = path.resolve(cwd);
+  const key = normalized.toLowerCase();
+  const list = settings.autoModeProjects || [];
+  const isOn = isAutoModeProject(normalized, settings);
+  const nextAuto = isOn
+    ? list.filter((p) => path.resolve(p).toLowerCase() !== key)
+    : [...list, normalized];
+  const patch = { autoModeProjects: nextAuto };
+  if (!isOn) {
+    patch.skipPermissionsProjects = (settings.skipPermissionsProjects || []).filter(
+      (p) => path.resolve(p).toLowerCase() !== key,
+    );
+  }
+  updateSettings(patch);
   return !isOn;
 }
 
@@ -171,4 +215,6 @@ module.exports = {
   updateSettings,
   isSkipPermissionsProject,
   toggleSkipPermissions,
+  isAutoModeProject,
+  toggleAutoMode,
 };

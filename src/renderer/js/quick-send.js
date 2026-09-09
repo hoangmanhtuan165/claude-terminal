@@ -42,6 +42,7 @@ class QuickSend {
     getActivePane,
     onPickFiles,
     onToggleSkipPermissions,
+    onToggleAutoMode,
     onNeedTerminal,
   }) {
     this.quickBar = quickBarElement;
@@ -51,6 +52,7 @@ class QuickSend {
     this.getActivePane = getActivePane;
     this.onPickFiles = onPickFiles || (() => {});
     this.onToggleSkipPermissions = onToggleSkipPermissions || (() => {});
+    this.onToggleAutoMode = onToggleAutoMode || (() => {});
     this.onNeedTerminal = onNeedTerminal || (() => {});
 
     this.items = [...DEFAULT_QUICK_ITEMS];
@@ -120,6 +122,9 @@ class QuickSend {
       <button class="quick-chip quick-chip-icon" data-action="attach" title="Chèn file vào terminal">
         ${window.icons.svg('paperclip', { size: 13 })}
       </button>
+      <button class="quick-chip quick-chip-icon" data-action="auto-mode" title="Bật chế độ Auto (--permission-mode auto) cho dự án này">
+        ${window.icons.svg('zap', { size: 13 })}
+      </button>
       <button class="quick-chip quick-chip-icon" data-action="skip-permissions" title="Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này">
         ${window.icons.svg('bolt', { size: 13 })}
       </button>`;
@@ -157,6 +162,13 @@ class QuickSend {
       if (pane) this.onToggleSkipPermissions(pane);
     });
     this.refreshSkipPermissionsButton();
+
+    this.autoModeButton = this.quickBar.querySelector('[data-action="auto-mode"]');
+    this.autoModeButton?.addEventListener('click', () => {
+      const pane = this.getActivePane();
+      if (pane) this.onToggleAutoMode(pane);
+    });
+    this.refreshAutoModeButton();
   }
 
   /** Dong bo icon nut bypass permissions voi trang thai cua pane dang active. */
@@ -168,6 +180,17 @@ class QuickSend {
     this.skipPermissionsButton.title = on
       ? 'Đang bỏ qua xin quyền (--dangerously-skip-permissions) - bấm để tắt cho dự án này'
       : 'Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này';
+  }
+
+  /** Dong bo icon nut che do Auto voi trang thai cua pane dang active. */
+  refreshAutoModeButton() {
+    if (!this.autoModeButton) return;
+    const pane = this.getActivePane();
+    const on = Boolean(pane?.autoMode);
+    this.autoModeButton.classList.toggle('is-auto-on', on);
+    this.autoModeButton.title = on
+      ? 'Đang bật chế độ Auto (--permission-mode auto) - bấm để tắt cho dự án này'
+      : 'Bật chế độ Auto (--permission-mode auto) cho dự án này';
   }
 
   // --- Hang lenh nhanh rieng cho tab SSH -------------------------------------
