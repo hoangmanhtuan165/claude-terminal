@@ -828,6 +828,48 @@ class TerminalTabs {
     return nowOn;
   }
 
+  /**
+   * Dat THANG che do quyen cho du an cua pane: 'ask' | 'auto' | 'bypass'.
+   * Dung cho segmented control o context bar - khac hai ham toggle o tren o
+   * cho: nguoi dung chon dich den, khong bat/tat mu. Chuyen thang tu bypass
+   * sang auto (hoac nguoc lai) chi hoi xac nhan MOT lan cho che do dich,
+   * khong hoi hai lan (tat cai cu + bat cai moi).
+   */
+  async setPermissionModeForPane(pane, mode) {
+    if (!pane.cwd) return;
+    const current = pane.skipPermissions ? 'bypass' : pane.autoMode ? 'auto' : 'ask';
+    if (mode === current) return;
+
+    if (mode === 'bypass') {
+      const ok = window.confirm(
+        'Bật --dangerously-skip-permissions cho dự án này?\n\nClaude sẽ tự động sửa file, chạy lệnh và thao tác khác mà KHÔNG hỏi xin quyền nữa, cho mọi tab Claude mở mới trong thư mục này. Chỉ bật nếu bạn thực sự tin tưởng dự án này.',
+      );
+      if (!ok) return;
+      // toggleSkipPermissions o backend tu tat autoMode cho cung du an.
+      await window.api.projects.toggleSkipPermissions(pane.cwd);
+    } else if (mode === 'auto') {
+      const ok = window.confirm(
+        'Bật --permission-mode auto cho dự án này?\n\nClaude sẽ tự động duyệt các hành động được đánh giá an toàn, cho mọi tab Claude mở mới trong thư mục này - vẫn dừng lại hỏi khi gặp việc rủi ro.',
+      );
+      if (!ok) return;
+      // toggleAutoMode o backend tu tat skipPermissions cho cung du an.
+      await window.api.projects.toggleAutoMode(pane.cwd);
+    } else {
+      // Ve "Hoi": tat cai dang bat.
+      if (current === 'bypass') await window.api.projects.toggleSkipPermissions(pane.cwd);
+      else await window.api.projects.toggleAutoMode(pane.cwd);
+    }
+
+    for (const p of this.panes.values()) {
+      if (String(p.cwd).toLowerCase() === String(pane.cwd).toLowerCase()) {
+        p.skipPermissions = mode === 'bypass';
+        p.autoMode = mode === 'auto';
+      }
+    }
+    this._renderStrip();
+    this.onPermissionModeChanged?.();
+  }
+
   // --- Tao tab -------------------------------------------------------------
 
   /**

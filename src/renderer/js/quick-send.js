@@ -35,24 +35,25 @@ const DEFAULT_QUICK_ITEMS = ['tiếp tục', 'tiếp', 'ok', '/compact', 'lỗi'
 
 class QuickSend {
   constructor({
+    contextBarElement,
     quickBarElement,
     sshQuickBarElement,
-    modelButton,
-    modelLabel,
     getActivePane,
     onPickFiles,
-    onToggleSkipPermissions,
-    onToggleAutoMode,
+    onSetPermissionMode,
     onNeedTerminal,
   }) {
+    this.contextBar = contextBarElement;
     this.quickBar = quickBarElement;
     this.sshBar = sshQuickBarElement || null;
-    this.modelButton = modelButton;
-    this.modelLabel = modelLabel;
+    // Nut model va nhan model gio nam trong context bar, tao lai moi lan
+    // renderContextBar - gan tai do, khong nhan tu ngoai nua.
+    this.modelButton = null;
+    this.modelLabel = null;
     this.getActivePane = getActivePane;
     this.onPickFiles = onPickFiles || (() => {});
-    this.onToggleSkipPermissions = onToggleSkipPermissions || (() => {});
-    this.onToggleAutoMode = onToggleAutoMode || (() => {});
+    // (pane, mode) voi mode: 'ask' | 'auto' | 'bypass'.
+    this.onSetPermissionMode = onSetPermissionMode || (() => {});
     this.onNeedTerminal = onNeedTerminal || (() => {});
 
     this.items = [...DEFAULT_QUICK_ITEMS];
@@ -63,7 +64,6 @@ class QuickSend {
     // Tang moi lan doi tab, tranh phan hoi ssh.list() cham cua tab cu ghi de tab moi.
     this._sshBarSeq = 0;
 
-    this.modelButton.addEventListener('click', () => this._openModelMenu());
   }
 
   async loadPrefs() {
@@ -74,7 +74,7 @@ class QuickSend {
     this.library = Array.isArray(prefs.promptLibrary) ? prefs.promptLibrary : [];
     this.modelByCwd = prefs.modelByCwd && typeof prefs.modelByCwd === 'object' ? prefs.modelByCwd : {};
     this.renderQuickBar();
-    this.refreshModelLabel();
+    this.renderContextBar();
   }
 
   /**
@@ -100,9 +100,6 @@ class QuickSend {
     const { escapeHtml } = window.formatUtils;
 
     this.quickBar.innerHTML = `
-      <button class="quick-chip quick-chip-icon" data-action="screenshot" title="Chụp màn hình rồi dán vào terminal">
-        ${window.icons.svg('camera', { size: 13 })}
-      </button>
       ${this.items
         .map(
           (text, index) =>
@@ -114,19 +111,6 @@ class QuickSend {
       </button>
       <button class="quick-chip quick-chip-edit" data-action="edit" title="Sửa danh sách nút gõ nhanh">
         ${window.icons.svg('pencil', { size: 12 })}
-      </button>
-      <span class="quick-bar-spacer"></span>
-      <button class="quick-chip quick-chip-icon" data-action="expand-prompt" title="Gửi dòng đang gõ, rồi nhờ Claude gợi ý cách hỏi rõ ràng/chi tiết hơn cho lần sau">
-        ${window.icons.svg('sparkle', { size: 13 })}
-      </button>
-      <button class="quick-chip quick-chip-icon" data-action="attach" title="Chèn file vào terminal">
-        ${window.icons.svg('paperclip', { size: 13 })}
-      </button>
-      <button class="quick-chip quick-chip-icon" data-action="auto-mode" title="Bật chế độ Auto (--permission-mode auto) cho dự án này">
-        ${window.icons.svg('zap', { size: 13 })}
-      </button>
-      <button class="quick-chip quick-chip-icon" data-action="skip-permissions" title="Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này">
-        ${window.icons.svg('bolt', { size: 13 })}
       </button>`;
 
     for (const button of this.quickBar.querySelectorAll('[data-index]')) {
@@ -140,57 +124,102 @@ class QuickSend {
       ?.addEventListener('click', (event) => this._editItems(event.currentTarget));
 
     this.quickBar
-      .querySelector('[data-action="screenshot"]')
-      ?.addEventListener('click', (event) => this._captureScreenshot(event.currentTarget));
-
-    this.quickBar
       .querySelector('[data-action="library"]')
       ?.addEventListener('click', (event) => this._openLibrary(event.currentTarget));
 
-    this.quickBar.querySelector('[data-action="attach"]')?.addEventListener('click', () => {
-      const pane = this.getActivePane();
-      if (pane) this.onPickFiles(pane);
-    });
+  }
 
-    this.quickBar
+  // --- Context bar -------------------------------------------------------------
+
+  /**
+   * Hang ngay tren terminal, noi dung DOI THEO LOAI TAB dang mo:
+   * - claude/grok: ten phien, che do quyen (Hoi/Auto/Bypass), model, cong cu
+   * - ssh        : ten may chu (lenh nhanh cua host nam o hang rieng ben duoi)
+   * - shell      : chi duong dan
+   * Ve lai toan bo moi lan doi tab hoac doi che do - re, va don gian hon giu
+   * tung nut rieng le dong bo.
+   */
+  renderContextBar() {
+    if (!this.contextBar) return;
+    const { escapeHtml, baseName } = window.formatUtils;
+    const pane = this.getActivePane();
+
+    if (!pane) {
+      this.contextBar.innerHTML = '';
+      this.contextBar.dataset.mode = '';
+      return;
+    }
+
+    const type = pane.sessionType || 'shell';
+    const isAgent = type === 'claude' || type === 'claude-resume' || type === 'grok';
+    const isClaude = type === 'claude' || type === 'claude-resume';
+    const mode = pane.skipPermissions ? 'bypass' : pane.autoMode ? 'auto' : 'ask';
+    this.contextBar.dataset.mode = isClaude ? mode : '';
+
+    const iconName = type === 'ssh' ? 'server' : isAgent ? 'sparkle' : 'terminal-prompt';
+    const label = type === 'ssh' ? pane.title : baseName(pane.cwd) || pane.cwd || 'home';
+    const sub = type === 'ssh' ? '' : pane.cwd || '';
+
+    const remembered = pane.cwd ? this.modelByCwd[pane.cwd.toLowerCase()] : null;
+
+    this.contextBar.innerHTML = `
+      <div class="ctx-left" title="${escapeHtml(sub)}">
+        <span class="ctx-icon" data-type="${escapeHtml(type)}">${window.icons.svg(iconName, { size: 13 })}</span>
+        <span class="ctx-title">${escapeHtml(label)}</span>
+      </div>
+      <div class="ctx-right">
+        ${
+          isClaude
+            ? `<div class="segmented ctx-mode" role="radiogroup" aria-label="Chế độ quyền">
+                 <button class="segment${mode === 'ask' ? ' is-active' : ''}" data-mode="ask" title="Claude hỏi trước mỗi thao tác sửa file / chạy lệnh">Hỏi</button>
+                 <button class="segment${mode === 'auto' ? ' is-active' : ''}" data-mode="auto" title="--permission-mode auto: tự duyệt việc an toàn, vẫn hỏi khi rủi ro">Auto</button>
+                 <button class="segment segment-danger${mode === 'bypass' ? ' is-active' : ''}" data-mode="bypass" title="--dangerously-skip-permissions: KHÔNG hỏi gì cả, kể cả việc nguy hiểm">Bypass</button>
+               </div>
+               <button class="ctx-model" data-action="model" title="Đổi model cho phiên Claude đang chạy">
+                 ${window.icons.svg('cpu', { size: 12 })}<span class="ctx-model-label">${escapeHtml(remembered || 'model')}</span>
+               </button>`
+            : ''
+        }
+        ${
+          isAgent
+            ? `<button class="quick-chip quick-chip-icon" data-action="expand-prompt" title="Gửi dòng đang gõ, rồi nhờ Claude gợi ý cách hỏi rõ ràng/chi tiết hơn cho lần sau">
+                 ${window.icons.svg('sparkle', { size: 13 })}
+               </button>`
+            : ''
+        }
+        <button class="quick-chip quick-chip-icon" data-action="attach" title="Chèn file vào terminal">
+          ${window.icons.svg('paperclip', { size: 13 })}
+        </button>
+        <button class="quick-chip quick-chip-icon" data-action="screenshot" title="Chụp màn hình rồi dán vào terminal">
+          ${window.icons.svg('camera', { size: 13 })}
+        </button>
+      </div>`;
+
+    this.modelButton = this.contextBar.querySelector('[data-action="model"]');
+    this.modelLabel = this.contextBar.querySelector('.ctx-model-label');
+    this.modelButton?.addEventListener('click', () => this._openModelMenu());
+
+    for (const button of this.contextBar.querySelectorAll('[data-mode]')) {
+      button.addEventListener('click', () => {
+        if (button.dataset.mode === mode) return;
+        this.onSetPermissionMode(pane, button.dataset.mode);
+      });
+    }
+
+    this.contextBar.querySelector('[data-action="attach"]')?.addEventListener('click', () => {
+      const p = this.getActivePane();
+      if (p) this.onPickFiles(p);
+    });
+    this.contextBar
       .querySelector('[data-action="expand-prompt"]')
       ?.addEventListener('click', () => this._expandPrompt());
+    this.contextBar
+      .querySelector('[data-action="screenshot"]')
+      ?.addEventListener('click', (event) => this._captureScreenshot(event.currentTarget));
 
-    this.skipPermissionsButton = this.quickBar.querySelector('[data-action="skip-permissions"]');
-    this.skipPermissionsButton?.addEventListener('click', () => {
-      const pane = this.getActivePane();
-      if (pane) this.onToggleSkipPermissions(pane);
-    });
-    this.refreshSkipPermissionsButton();
-
-    this.autoModeButton = this.quickBar.querySelector('[data-action="auto-mode"]');
-    this.autoModeButton?.addEventListener('click', () => {
-      const pane = this.getActivePane();
-      if (pane) this.onToggleAutoMode(pane);
-    });
-    this.refreshAutoModeButton();
-  }
-
-  /** Dong bo icon nut bypass permissions voi trang thai cua pane dang active. */
-  refreshSkipPermissionsButton() {
-    if (!this.skipPermissionsButton) return;
-    const pane = this.getActivePane();
-    const on = Boolean(pane?.skipPermissions);
-    this.skipPermissionsButton.classList.toggle('is-active', on);
-    this.skipPermissionsButton.title = on
-      ? 'Đang bỏ qua xin quyền (--dangerously-skip-permissions) - bấm để tắt cho dự án này'
-      : 'Bật bỏ qua xin quyền (--dangerously-skip-permissions) cho dự án này';
-  }
-
-  /** Dong bo icon nut che do Auto voi trang thai cua pane dang active. */
-  refreshAutoModeButton() {
-    if (!this.autoModeButton) return;
-    const pane = this.getActivePane();
-    const on = Boolean(pane?.autoMode);
-    this.autoModeButton.classList.toggle('is-auto-on', on);
-    this.autoModeButton.title = on
-      ? 'Đang bật chế độ Auto (--permission-mode auto) - bấm để tắt cho dự án này'
-      : 'Bật chế độ Auto (--permission-mode auto) cho dự án này';
+    // Chip go nhanh chi co y nghia khi phia kia la agent (Claude/Grok) - voi
+    // shell tran "tiếp tục"/"ok" chi la lenh khong ton tai.
+    this.quickBar.classList.toggle('is-hidden', !isAgent && type !== 'ssh');
   }
 
   // --- Hang lenh nhanh rieng cho tab SSH -------------------------------------
@@ -516,6 +545,7 @@ class QuickSend {
 
   /** Nhan model dang hien: nho theo tung du an vi moi du an hay dung mot model. */
   refreshModelLabel() {
+    if (!this.modelLabel) return;
     const pane = this.getActivePane();
     const remembered = pane?.cwd ? this.modelByCwd[pane.cwd.toLowerCase()] : null;
     this.modelLabel.textContent = remembered || 'model';
@@ -541,10 +571,11 @@ class QuickSend {
 
     document.body.append(menu);
 
-    // Neo menu ngay tren nut, can le phai de khong tran ra ngoai man hinh.
+    // Nut model nam o context bar (gan dinh) - moc menu XUONG duoi nut, can
+    // le phai de khong tran ra ngoai man hinh.
     const rect = this.modelButton.getBoundingClientRect();
-    menu.style.left = `${Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8)}px`;
-    menu.style.bottom = `${window.innerHeight - rect.top + 6}px`;
+    menu.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+    menu.style.top = `${rect.bottom + 6}px`;
 
     for (const item of menu.querySelectorAll('[data-command]')) {
       item.addEventListener('click', () => {
@@ -571,7 +602,7 @@ class QuickSend {
       this.modelByCwd[pane.cwd.toLowerCase()] = label;
       window.api.prefs.set({ modelByCwd: this.modelByCwd });
     }
-    this.modelLabel.textContent = label;
+    if (this.modelLabel) this.modelLabel.textContent = label;
   }
 }
 

@@ -80,6 +80,12 @@
               Đo trên 4044 prompt thật: "tiếp tục" 146 lần, "tiếp" 78, "ok" 36 —
               hơn 270 lần gõ lại đúng vài chữ.
             -->
+            <!--
+              Context bar: đổi theo loại tab đang mở. Tab Claude: tên phiên,
+              chế độ quyền (Hỏi/Auto/Bypass), model, công cụ. Tab SSH: host +
+              lệnh nhanh của host. Tab shell: chỉ đường dẫn.
+            -->
+            <div id="context-bar" class="context-bar"></div>
             <div id="quick-bar" class="quick-bar"></div>
             <div id="quick-bar-ssh" class="quick-bar quick-bar-ssh is-hidden"></div>
 
@@ -194,14 +200,6 @@
           <span class="status-icon" data-icon="folder"></span>
           <span id="status-cwd">—</span>
         </span>
-        <!--
-          Đổi model: /model bị gõ tay 316 lần trên 65/151 phiên, nhiều gấp 10
-          lần lệnh phổ biến thứ nhì. Bấm ở đây là gõ thẳng /model xuống terminal.
-        -->
-        <button id="model-picker" class="status-item status-button" title="Đổi model cho phiên Claude đang chạy">
-          <span class="status-icon" data-icon="cpu"></span>
-          <span id="status-model">model</span>
-        </button>
         <!--
           Tài khoản Claude: chỉ hiển thị thông tin không bí mật (gói, hạn mức,
           hạn token). Mọi thao tác đăng nhập đều do `claude /login` lo, app chỉ

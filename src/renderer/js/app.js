@@ -32,10 +32,9 @@ const dom = {
   btnPalette: el('btn-palette'),
   btnTheme: el('btn-theme'),
   paletteRoot: el('palette-root'),
+  contextBar: el('context-bar'),
   quickBar: el('quick-bar'),
   quickBarSsh: el('quick-bar-ssh'),
-  modelPicker: el('model-picker'),
-  statusModel: el('status-model'),
   accountButton: el('account-button'),
   statusAccount: el('status-account'),
   usageButton: el('usage-button'),
@@ -142,8 +141,7 @@ function updateStatusBar() {
   // Model được nhớ theo từng dự án nên đổi tab là nhãn phải đổi theo.
   quickSend?.refreshModelLabel();
   quickSend?.refreshSshBar();
-  quickSend?.refreshSkipPermissionsButton();
-  quickSend?.refreshAutoModeButton();
+  quickSend?.renderContextBar();
   // Chấm "đang mở" trên sidebar phải theo kịp khi tab mới mở/đóng.
   sessionsSidebar?.render();
   projectsSidebar?.render();
@@ -323,11 +321,7 @@ async function bootstrap() {
     themeManager,
     onChange: updateStatusBar,
   });
-  terminalTabs.onPermissionModeChanged = () => {
-    updateStatusBar();
-    quickSend?.refreshSkipPermissionsButton();
-    quickSend?.refreshAutoModeButton();
-  };
+  terminalTabs.onPermissionModeChanged = () => updateStatusBar();
 
   await terminalTabs.loadFontSize();
 
@@ -383,14 +377,12 @@ async function bootstrap() {
   });
 
   quickSend = new window.QuickSend({
+    contextBarElement: dom.contextBar,
     quickBarElement: dom.quickBar,
     sshQuickBarElement: dom.quickBarSsh,
-    modelButton: dom.modelPicker,
-    modelLabel: dom.statusModel,
     getActivePane: () => terminalTabs.activePane,
     onPickFiles: (pane) => terminalTabs.pickAndInsertFiles(pane),
-    onToggleSkipPermissions: (pane) => terminalTabs.toggleSkipPermissionsForPane(pane),
-    onToggleAutoMode: (pane) => terminalTabs.toggleAutoModeForPane(pane),
+    onSetPermissionMode: (pane, mode) => terminalTabs.setPermissionModeForPane(pane, mode),
     onNeedTerminal: () => showScreen('terminal'),
   });
   await quickSend.loadPrefs();

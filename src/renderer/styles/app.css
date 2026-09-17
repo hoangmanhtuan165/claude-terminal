@@ -494,9 +494,106 @@ body[data-platform='darwin'] .titlebar {
   color: var(--text-secondary);
 }
 
-/* Day nut chen file/bypass permissions ve sat mep phai hang go nhanh. */
-.quick-bar-spacer {
-  flex: 1 1 12px;
+/* --- Context bar: hang tren terminal, doi theo loai tab --------------------- */
+
+.context-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: var(--sp-1) var(--sp-3);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  transition: background var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease);
+}
+
+.context-bar:empty {
+  display: none;
+}
+
+/* Bypass dang bat: to ca hang - trang thai rui ro phai nhin thay tu xa, khong
+   chi la mau cua mot nut nho. */
+.context-bar[data-mode='bypass'] {
+  background: var(--danger-soft);
+  border-bottom-color: var(--danger);
+}
+
+.context-bar[data-mode='auto'] {
+  border-bottom-color: var(--accent-border);
+}
+
+.ctx-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.ctx-icon {
+  display: inline-flex;
+  color: var(--text-tertiary);
+}
+
+.ctx-icon[data-type='claude'],
+.ctx-icon[data-type='claude-resume'],
+.ctx-icon[data-type='grok'] {
+  color: var(--accent);
+}
+
+.ctx-icon[data-type='ssh'] {
+  color: var(--term-cyan);
+}
+
+.ctx-title {
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ctx-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.ctx-mode .segment {
+  padding: 3px var(--sp-3);
+  font-size: var(--fs-xs);
+}
+
+.ctx-mode .segment-danger.is-active {
+  background: var(--danger);
+  color: #fff;
+}
+
+.ctx-mode .segment-danger:not(.is-active):hover {
+  color: var(--danger);
+}
+
+.ctx-model {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px var(--sp-3);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.ctx-model:hover {
+  background: var(--bg-overlay);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
 }
 
 .quick-chip-icon.is-waiting {
