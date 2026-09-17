@@ -3,7 +3,6 @@
 const path = require('node:path');
 const fs = require('node:fs/promises');
 const fsSync = require('node:fs');
-const { execFile } = require('node:child_process');
 const { ipcMain, dialog, shell, app, clipboard, Menu } = require('electron');
 
 const { claudeProjectsDir } = require('./app-paths');
@@ -25,7 +24,7 @@ const usageLocal = require('./usage/usage-local');
 const historyIndex = require('./history/history-index');
 const historySearch = require('./history/history-search');
 const { readTranscript } = require('./history/transcript-reader');
-const { resolveShell, resolveScp } = require('./terminal/shell-resolver');
+const { resolveShell } = require('./terminal/shell-resolver');
 const { resolveTheme, titleBarOverlayFor } = require('./theme');
 const updater = require('./updater');
 const trayController = require('./tray-controller');
@@ -374,29 +373,31 @@ function register(getWindow) {
   });
 
   /**
-   * Upload nhanh khi keo-tha file vao tab SSH. Chay `scp` mot lan, ngoai PTY -
-   * phien ssh tuong tac trong tab van dang do nguoi dung go, khong dinh gi toi
-   * tien trinh scp rieng nay.
+   * Upload nhanh khi keo-tha file hoac dan anh vao tab SSH - chay ngoai PTY,
+   * khong dinh gi toi phien ssh tuong tac dang mo trong tab.
+   *
+   * Dung SFTP (ssh2) chu khong phai `scp`: scp la tien trinh rieng, khong co
+   * terminal de go mat khau, nen voi may chu chi cho dang nhap bang mat khau
+   * no luon that bai "Permission denied". ssh2 nhan mat khau da luu trong ho
+   * so nen lam viec duoc voi ca hai kieu xac thuc.
    */
-  ipcMain.handle('ssh:uploadFile', (_event, { hostId, localPath }) => {
-    return new Promise((resolve) => {
-      const host = sshStore.getHost(hostId);
-      if (!host) return resolve({ ok: false, error: 'Không tìm thấy hồ sơ SSH này.' });
+  ipcMain.handle('ssh:uploadFile', async (_event, { hostId, localPath }) => {
+    const host = sshStore.getHost(hostId);
+    if (!host) return { ok: false, error: 'Không tìm thấy hồ sơ SSH này.' };
+    if (!host.keyPath && !host.password) {
+      return {
+        ok: false,
+        error:
+          'Hồ sơ máy chủ này chưa có khoá riêng lẫn mật khẩu nên không tự đăng nhập được. Mở "Máy chủ" ở thanh bên, sửa hồ sơ và điền mật khẩu (hoặc chọn file khoá).',
+      };
+    }
 
-      const scp = resolveScp();
-      if (!scp) return resolve({ ok: false, error: 'Không tìm thấy scp (cần OpenSSH client).' });
-
-      const args = [];
-      if (host.port && host.port !== 22) args.push('-P', String(host.port));
-      if (host.keyPath) args.push('-i', host.keyPath);
-      const target = host.username ? `${host.username}@${host.host}` : host.host;
-      args.push(localPath, `${target}:~/`);
-
-      execFile(scp, args, { timeout: 5 * 60 * 1000 }, (error, _stdout, stderr) => {
-        if (error) return resolve({ ok: false, error: stderr?.trim() || error.message });
-        resolve({ ok: true, remotePath: `~/${path.basename(localPath)}` });
-      });
-    });
+    try {
+      const remotePath = await sftpClient.uploadToHome(host, localPath, path.basename(localPath));
+      return { ok: true, remotePath };
+    } catch (err) {
+      return { ok: false, error: err?.message || String(err) };
+    }
   });
 
   // --- Lich su -------------------------------------------------------------

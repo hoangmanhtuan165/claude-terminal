@@ -7,9 +7,17 @@ const { readJson, writeJson } = require('./json-store');
 /**
  * Ho so may chu SSH nguoi dung tu luu.
  *
- * KHONG bao gio luu mat khau: chi luu duong dan file khoa (tham chieu, khong
- * doc/luu noi dung khoa). Khong co khoa thi ssh se hoi mat khau/dung ssh-agent
- * ngay trong terminal nhu binh thuong - nguoi dung tu go, app khong can biet.
+ * Xac thuc cho PHIEN TERMINAL (tab ssh) van do chinh `ssh` lo: co keyPath thi
+ * dung khoa, khong thi ssh tu hoi mat khau trong terminal - app khong xen vao.
+ *
+ * `password` chi phuc vu cac KENH PHU chay ngoai PTY (upload file khi keo-tha
+ * hoac dan anh, trinh duyet SFTP): cac kenh do khong co terminal de nguoi dung
+ * go mat khau, nen khong luu thi chung khong the xac thuc duoc voi may chu chi
+ * cho dang nhap bang mat khau.
+ *
+ * Luu y bao mat: truong nay ghi xuong dia dang VAN BAN THUONG theo lua chon cua
+ * nguoi dung - bat ky tien trinh nao chay duoi cung tai khoan Windows deu doc
+ * duoc. Dung khoa SSH thay cho mat khau neu can an toan hon.
  */
 
 function listHosts() {
@@ -49,6 +57,8 @@ function sanitizeHost(input) {
     port: Number.isInteger(port) && port > 0 && port <= 65535 ? port : 22,
     username: String(input?.username || '').trim().slice(0, 100),
     keyPath: String(input?.keyPath || '').trim() || null,
+    // Khong trim: mat khau co the co khoang trang dau/cuoi that.
+    password: typeof input?.password === 'string' && input.password ? input.password : null,
     autoReconnect: Boolean(input?.autoReconnect),
     forwards: Array.isArray(input?.forwards)
       ? input.forwards.map(sanitizeForward).filter(Boolean).slice(0, 10)
@@ -76,7 +86,16 @@ function updateHost(id, input) {
   const hosts = listHosts();
   const index = hosts.findIndex((h) => h.id === id);
   if (index === -1) return null;
-  hosts[index] = { ...hosts[index], ...sanitizeHost(input) };
+
+  const next = sanitizeHost(input);
+  // Form sua ho so khong gui lai mat khau da luu (o nhap de trong nghia la
+  // "giu nguyen", khong phai "xoa di") - chi ghi de khi nguoi dung thuc su
+  // nhap gia tri moi. Xoa mat khau thi dung `password: ''` tuong minh.
+  if (next.password === null && input?.password !== '') {
+    next.password = hosts[index].password || null;
+  }
+
+  hosts[index] = { ...hosts[index], ...next };
   writeJson(sshHostsPath(), { hosts });
   return hosts[index];
 }

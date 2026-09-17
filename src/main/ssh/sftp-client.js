@@ -56,8 +56,12 @@ function connect(host) {
         host: host.host,
         port: host.port || 22,
         username: host.username || undefined,
+        // Thu tu uu tien: khoa > mat khau da luu > ssh-agent. May chu chi cho
+        // dang nhap bang mat khau thi bat buoc phai co `password` o day - kenh
+        // nay chay ngoai PTY nen khong co terminal de nguoi dung go tay.
         privateKey: host.keyPath ? fs.readFileSync(host.keyPath) : undefined,
-        agent: !host.keyPath ? process.env.SSH_AUTH_SOCK : undefined,
+        password: !host.keyPath && host.password ? host.password : undefined,
+        agent: !host.keyPath && !host.password ? process.env.SSH_AUTH_SOCK : undefined,
         readyTimeout: CONNECT_TIMEOUT_MS,
       });
   });
@@ -125,6 +129,27 @@ function upload(connId, localPath, remotePath) {
   });
 }
 
+/**
+ * Day mot file len thu muc home cua may chu roi ngat ngay - dung cho keo-tha
+ * va dan anh vao tab SSH, la thao tac mot lan, khong can giu ket noi mo nhu
+ * trinh duyet SFTP.
+ *
+ * Tra ve duong dan TUYET DOI tren may chu: `~` la cu phap cua shell, con
+ * Claude Code doc tham chieu @file bang chinh trinh doc file cua no nen mot
+ * chuoi bat dau bang `~` se khong mo duoc.
+ */
+async function uploadToHome(host, localPath, fileName) {
+  const connId = await connect(host);
+  try {
+    const home = await realpath(connId, '.');
+    const remotePath = `${home.replace(/\/+$/, '')}/${fileName}`;
+    await upload(connId, localPath, remotePath);
+    return remotePath;
+  } finally {
+    disconnect(connId);
+  }
+}
+
 function disconnect(connId) {
   const entry = connections.get(connId);
   if (!entry) return;
@@ -149,6 +174,7 @@ module.exports = {
   rmdir,
   download,
   upload,
+  uploadToHome,
   disconnect,
   disconnectAll,
 };

@@ -30,6 +30,24 @@ const FILES = {
 };
 
 async function exportBackup(win) {
+  // Ho so may chu co the chua mat khau dang van ban thuong - file xuat ra hay
+  // duoc gui qua lai/luu tru nen phai noi ro truoc, khong de nguoi dung phat
+  // hien sau khi da chia se file.
+  const hosts = readJson(sshHostsPath(), null)?.hosts || [];
+  const withPassword = hosts.filter((h) => h?.password).length;
+  if (withPassword > 0) {
+    const choice = dialog.showMessageBoxSync(win, {
+      type: 'warning',
+      buttons: ['Huỷ', 'Vẫn xuất'],
+      defaultId: 0,
+      cancelId: 0,
+      message: `File xuất ra sẽ chứa mật khẩu của ${withPassword} máy chủ`,
+      detail:
+        'Mật khẩu nằm trong file dưới dạng đọc được. Chỉ lưu ở nơi riêng tư, đừng gửi file này cho người khác.',
+    });
+    if (choice !== 1) return { saved: false };
+  }
+
   const { canceled, filePath } = await dialog.showSaveDialog(win, {
     title: 'Xuất cấu hình KLTERMINAL',
     defaultPath: `klterminal-backup-${new Date().toISOString().slice(0, 10)}.json`,

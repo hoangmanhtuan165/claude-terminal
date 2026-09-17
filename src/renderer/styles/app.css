@@ -2417,6 +2417,13 @@ details.block pre {
   font-size: var(--fs-xs);
 }
 
+/* Dong giai thich nho duoi mot o nhap trong form. */
+.field-hint {
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+
 .field-row {
   display: flex;
   gap: var(--sp-3);

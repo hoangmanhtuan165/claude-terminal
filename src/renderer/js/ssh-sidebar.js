@@ -143,6 +143,10 @@ class SshSidebar {
               <button class="icon-btn" data-act="clear-key" title="Bỏ chọn khoá">${window.icons.svg('x', { size: 12 })}</button>
             </div>
           </label>
+          <label class="field-label">Mật khẩu (chỉ cần cho tải file lên và trình duyệt SFTP)
+            <input class="field-input" data-f="password" type="password" value="${escapeHtml(host?.password || '')}" placeholder="${isEdit && host?.password ? 'Đang lưu - để trống nếu giữ nguyên' : 'Bỏ trống nếu dùng khoá riêng'}" autocomplete="off" />
+            <span class="field-hint">Tab terminal vẫn tự hỏi mật khẩu như cũ. Ô này chỉ dùng cho kéo-thả/dán ảnh và SFTP - những việc chạy ngoài terminal nên không có chỗ gõ tay. Lưu dạng văn bản thường trong file cấu hình của app.</span>
+          </label>
           <label class="toggle">
             <input type="checkbox" data-f="autoReconnect" ${host?.autoReconnect ? 'checked' : ''} /> Tự động kết nối lại khi mất mạng
           </label>
@@ -233,6 +237,9 @@ class SshSidebar {
         port: Number(get('port')) || 22,
         username: get('username'),
         keyPath: get('keyPath') || null,
+        // O nay duoc do san gia tri dang luu, nen chuoi rong o day nghia la
+        // nguoi dung da chu y xoa mat khau - xem updateHost o ssh-store.js.
+        password: get('password'),
         autoReconnect: overlay.querySelector('[data-f="autoReconnect"]').checked,
         forwards: [...forwardsList.querySelectorAll('.ssh-forward-row')].map((row) => ({
           type: row.querySelector('.fwd-type').value,

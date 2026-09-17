@@ -192,22 +192,4 @@ function startupCommandFor(sessionType, options = {}) {
   return null;
 }
 
-/**
- * Duong dan `scp`, dung rieng cho tinh nang keo-tha upload file (khong qua
- * PTY - day la tien trinh mot lan, ket qua tra ve qua IPC roi ghi thang len
- * xterm o renderer).
- *
- * Windows 10/11 luon kem san OpenSSH client (ssh.exe/scp.exe) tai
- * System32\OpenSSH, nhung thu muc do khong luon nam trong PATH.
- */
-function resolveScp() {
-  const onPath = findOnPath(IS_WINDOWS ? 'scp.exe' : 'scp');
-  if (onPath) return onPath;
-  if (IS_WINDOWS) {
-    const fallback = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'OpenSSH', 'scp.exe');
-    if (fs.existsSync(fallback)) return fallback;
-  }
-  return null;
-}
-
-module.exports = { resolveShell, buildShellArgs, startupCommandFor, resolveScp };
+module.exports = { resolveShell, buildShellArgs, startupCommandFor };
