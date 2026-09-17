@@ -59,13 +59,17 @@
       </header>
 
       <div class="workspace">
+        <!--
+          Sidebar một cột cuộn, ba mục xếp dọc: PHIÊN (tab đang mở + trạng thái
+          chờ/chạy), DỰ ÁN, MÁY CHỦ. Bỏ hai nút chuyển "Dự án / Máy chủ" - phải
+          bấm qua lại để thấy máy chủ là ma sát không cần thiết.
+        -->
         <aside class="sidebar">
-          <div class="sidebar-tabs">
-            <button id="sidebar-tab-projects" class="sidebar-tab is-active">Dự án</button>
-            <button id="sidebar-tab-ssh" class="sidebar-tab">Máy chủ</button>
+          <div class="sidebar-column">
+            <div id="sessions-sidebar" class="sidebar-block"></div>
+            <div id="projects-sidebar" class="sidebar-block"></div>
+            <div id="ssh-sidebar" class="sidebar-block"></div>
           </div>
-          <div id="projects-sidebar" class="sidebar-scroll"></div>
-          <div id="ssh-sidebar" class="sidebar-scroll is-hidden"></div>
         </aside>
 
         <main class="content">
@@ -249,6 +253,7 @@
     <script src="js/terminal-find.js"></script>
     <script src="js/transcript-view.js"></script>
     <script src="js/history-panel.js"></script>
+    <script src="js/sessions-sidebar.js"></script>
     <script src="js/projects-sidebar.js"></script>
     <script src="js/ssh-sidebar.js"></script>
     <script src="js/sftp-browser.js"></script>

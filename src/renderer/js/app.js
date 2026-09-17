@@ -17,10 +17,9 @@ const dom = {
   terminalScreen: el('terminal-screen'),
   statsScreen: el('stats-screen'),
   statsContent: el('stats-content'),
+  sessionsSidebar: el('sessions-sidebar'),
   sidebar: el('projects-sidebar'),
   sshSidebar: el('ssh-sidebar'),
-  sidebarTabProjects: el('sidebar-tab-projects'),
-  sidebarTabSsh: el('sidebar-tab-ssh'),
   statusCwd: el('status-cwd'),
   statusShell: el('status-shell'),
   statusHistory: el('status-history'),
@@ -74,6 +73,7 @@ const findElements = {
 let terminalTabs;
 let historyPanel;
 let transcriptView;
+let sessionsSidebar;
 let projectsSidebar;
 let sshSidebar;
 let workspacePresetsPanel;
@@ -145,6 +145,7 @@ function updateStatusBar() {
   quickSend?.refreshSkipPermissionsButton();
   quickSend?.refreshAutoModeButton();
   // Chấm "đang mở" trên sidebar phải theo kịp khi tab mới mở/đóng.
+  sessionsSidebar?.render();
   projectsSidebar?.render();
   sshSidebar?.render();
 
@@ -337,6 +338,20 @@ async function bootstrap() {
     activateTab: (tabId) => terminalTabs.activate(tabId),
   });
 
+  sessionsSidebar = new window.SessionsSidebar({
+    element: dom.sessionsSidebar,
+    getTabs: () => terminalTabs.tabs,
+    getActiveTabId: () => terminalTabs.activeTabId,
+    onActivate: (tabId) => {
+      showScreen('terminal');
+      terminalTabs.activate(tabId);
+    },
+    onClose: (tabId) => terminalTabs.closeTab(tabId),
+  });
+  // Trang thai chay/cho doi lien tuc theo output - ve lai rieng, khong keo
+  // theo ca updateStatusBar (git branch, sidebar du an...) moi lan.
+  terminalTabs.onStatusChange = () => sessionsSidebar.render();
+
   projectsSidebar = new window.ProjectsSidebar({
     element: dom.sidebar,
     onOpenTerminal: openTerminal,
@@ -416,19 +431,7 @@ async function bootstrap() {
   await refreshHistory();
 }
 
-/** Chuyển giữa panel "Dự án" và "Máy chủ" trong cùng một sidebar. */
-function showSidebarPanel(panel) {
-  const isSsh = panel === 'ssh';
-  dom.sidebar.classList.toggle('is-hidden', isSsh);
-  dom.sshSidebar.classList.toggle('is-hidden', !isSsh);
-  dom.sidebarTabProjects.classList.toggle('is-active', !isSsh);
-  dom.sidebarTabSsh.classList.toggle('is-active', isSsh);
-}
-
 function bindChrome() {
-  dom.sidebarTabProjects.addEventListener('click', () => showSidebarPanel('projects'));
-  dom.sidebarTabSsh.addEventListener('click', () => showSidebarPanel('ssh'));
-
   dom.navHistory.addEventListener('click', () =>
     showScreen(currentScreen === 'history' ? 'terminal' : 'history'),
   );

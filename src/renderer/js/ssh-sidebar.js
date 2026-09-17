@@ -60,6 +60,10 @@ class SshSidebar {
 
     this.listElement.innerHTML = [
       `<div class="sidebar-section">
+         <button class="sidebar-heading is-static">
+           <span>Máy chủ</span>
+           <span class="count">${sorted.length}</span>
+         </button>
          ${
            sorted.length
              ? sorted.map(renderRow).join('')

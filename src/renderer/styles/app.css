@@ -656,6 +656,120 @@ body[data-platform='darwin'] .titlebar {
   min-height: 0;
 }
 
+/* Mot cot cuon chung cho ca ba muc PHIEN / DU AN / MAY CHU. Tung muc (.sidebar-block)
+   khong tu cuon rieng - cuon o cot ngoai de keo mot phat thay het. */
+.sidebar-column {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: var(--sp-6);
+}
+
+.sidebar-block + .sidebar-block {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Danh sach ben trong tung muc khong duoc cuon rieng nua (cot ngoai lo). */
+.sidebar-block .sidebar-list {
+  flex: none;
+  overflow: visible;
+  padding-bottom: 0;
+}
+
+/* --- Muc PHIEN --------------------------------------------------------------- */
+
+.sess-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 1px var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.sess-row:hover {
+  background: var(--bg-hover);
+}
+
+.sess-row.is-active {
+  background: var(--bg-overlay);
+  border-color: var(--border-default);
+  box-shadow: var(--shadow-sm);
+}
+
+.sess-row:hover .project-actions,
+.sess-row.is-active .project-actions {
+  opacity: 1;
+}
+
+.sess-row[data-status='dead'] .project-name {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+/* Cham trang thai: mau theo trang thai, KHONG theo loai tab - cai nguoi dung
+   can liec la "co dang cho toi khong", con loai tab da co o ten. */
+.sess-dot {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.sess-dot[data-status='running'] {
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  animation: session-pulse 1.4s ease-in-out infinite;
+}
+
+.sess-dot[data-status='waiting'] {
+  background: var(--term-yellow);
+  box-shadow: 0 0 0 3px rgba(217, 165, 32, 0.28);
+}
+
+.sess-row[data-status='waiting'] .project-sub {
+  color: var(--term-yellow);
+  font-weight: 600;
+}
+
+.sess-dot[data-status='idle'] {
+  background: var(--text-tertiary);
+}
+
+.sess-dot[data-status='dead'] {
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+}
+
+@keyframes session-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--accent-soft); }
+  50% { box-shadow: 0 0 0 4px var(--accent-soft); }
+}
+
+/* So phien dang cho, ngay tren tieu de muc - thay ngay ca khi muc thu gon. */
+.session-waiting-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  margin-left: var(--sp-1);
+  background: var(--term-yellow);
+  border-radius: var(--r-full);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 /* O tim dung yen o tren, chi phan danh sach ben duoi cuon - go tim ma list
    cuon theo thi mat dau ngay ca chinh cai vua go. */
 .sidebar-search {
@@ -2312,35 +2426,6 @@ details.block pre {
 }
 
 /* --- Sidebar hai tab: Dự án / Máy chủ SSH --------------------------------- */
-
-.sidebar-tabs {
-  display: flex;
-  flex-shrink: 0;
-  gap: 2px;
-  padding: var(--sp-2) var(--sp-2) 0;
-}
-
-.sidebar-tab {
-  flex: 1;
-  padding: var(--sp-2) 0;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-tertiary);
-  font-size: var(--fs-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
-}
-
-.sidebar-tab:hover {
-  color: var(--text-secondary);
-}
-
-.sidebar-tab.is-active {
-  border-color: var(--accent);
-  color: var(--text-primary);
-}
 
 /* Phien SSH dang chay - mau rieng de phan biet voi claude tren thanh tab */
 .tab-dot[data-type='ssh'] {

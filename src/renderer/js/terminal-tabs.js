@@ -32,6 +32,29 @@ const NOTIFY_REARM_QUIET_MS = 2_000;
 /** So tab vua dong duoc giu de hoan tac (Ctrl+Shift+K) - moi vao la mot phan tu. */
 const MAX_CLOSED_HISTORY = 10;
 
+/**
+ * Trang thai phien cho muc PHIEN o sidebar. Sau khi output ngung tung nay ms,
+ * pane duoc coi la da "lang" va doc man hinh de phan biet "dang cho nguoi
+ * dung" voi "ranh". Ngan hon NOTIFY_REARM_QUIET_MS de cham doi mau nhanh hon
+ * thong bao he thong (cai do co y cham de khong spam).
+ */
+const STATUS_SETTLE_MS = 1_200;
+
+/**
+ * Dau hieu Claude Code dang cho nguoi dung: dong nhap `>` / `❯` (co the kem
+ * placeholder), hoac hop chon cua AskUserQuestion / xin quyen (`❯ 1.`,
+ * `Yes/No`). Chi xet vai dong cuoi man hinh - phan tren la lich su.
+ */
+const WAITING_PATTERNS = [
+  /^\s*[>❯]\s*$/,
+  /^\s*[>❯]\s+\S/,
+  /^\s*❯\s*\d+\./,
+  /\b(Yes|No)\b.*\b(Yes|No)\b/,
+  /Do you want to/i,
+  /\(y\/n\)/i,
+  /\[Y\/n\]/i,
+];
+
 class TerminalTabs {
   constructor({ paneElement, stripElement, tabListButton, broadcastButton, themeManager, onChange }) {
     this.paneElement = paneElement;
@@ -82,6 +105,8 @@ class TerminalTabs {
       if (!pane) return;
       pane.alive = false;
       pane.term.write(`\r\n\x1b[90m[phiên kết thúc, mã thoát ${exitCode}]\x1b[0m\r\n`);
+      clearTimeout(pane.statusTimer);
+      this._setPaneStatus(pane, 'dead');
       this._renderStrip();
     });
   }
@@ -105,6 +130,42 @@ class TerminalTabs {
     pane.quietTimer = setTimeout(() => {
       pane.notifyArmed = true;
     }, NOTIFY_REARM_QUIET_MS);
+
+    this._setPaneStatus(pane, 'running');
+    clearTimeout(pane.statusTimer);
+    pane.statusTimer = setTimeout(() => this._settlePaneStatus(pane), STATUS_SETTLE_MS);
+  }
+
+  /**
+   * Output da ngung mot luc: doc vai dong cuoi man hinh de quyet dinh pane
+   * dang CHO nguoi dung (Claude in dau nhac / hop chon) hay chi RANH.
+   * Voi tab shell tran thi khong phan biet duoc (dau nhac shell cung la
+   * "cho") nen coi la ranh - "cho" chi co y nghia voi phien claude/grok.
+   */
+  _settlePaneStatus(pane) {
+    if (!pane.alive) return this._setPaneStatus(pane, 'dead');
+
+    const agentTypes = ['claude', 'claude-resume', 'grok'];
+    // Tab ssh cung co the dang chay claude tren may chu - khong biet truoc,
+    // nen van doc man hinh nhu tab claude.
+    const isAgent = agentTypes.includes(pane.sessionType) || pane.sessionType === 'ssh';
+    if (!isAgent) return this._setPaneStatus(pane, 'idle');
+
+    const buffer = pane.term.buffer.active;
+    const last = buffer.baseY + buffer.cursorY;
+    const lines = [];
+    for (let y = Math.max(0, last - 8); y <= last; y++) {
+      const text = buffer.getLine(y)?.translateToString(true) ?? '';
+      if (text.trim()) lines.push(text);
+    }
+    const waiting = lines.some((line) => WAITING_PATTERNS.some((re) => re.test(line)));
+    this._setPaneStatus(pane, waiting ? 'waiting' : 'idle');
+  }
+
+  _setPaneStatus(pane, status) {
+    if (pane.status === status) return;
+    pane.status = status;
+    this.onStatusChange?.();
   }
 
   /** Pane dang thuc su hien tren man hinh VA cua so app dang duoc focus. */
@@ -400,6 +461,10 @@ class TerminalTabs {
       lastOutputAt: 0,
       notifyArmed: true,
       quietTimer: null,
+      // Trang thai cho muc PHIEN o sidebar: 'running' | 'waiting' | 'idle' |
+      // 'dead'. Cap nhat o _trackPaneActivity/_settlePaneStatus.
+      status: 'idle',
+      statusTimer: null,
       // terminal-find.js va exportActiveLog doc `title` tu pane dang focus.
       get title() {
         return tab.title;
@@ -506,6 +571,7 @@ class TerminalTabs {
     } catch (err) {
       pane.alive = false;
       pane.term.write(`\r\n\x1b[31mKhông mở được phiên: ${err.message}\x1b[0m\r\n`);
+      this._setPaneStatus(pane, 'dead');
       this._renderStrip();
     }
   }
@@ -1063,6 +1129,7 @@ class TerminalTabs {
       await window.api.scrollback.remove(pane.id);
       pane.term.dispose();
       clearTimeout(pane.quietTimer);
+      clearTimeout(pane.statusTimer);
       this.panes.delete(pane.id);
     }
 
