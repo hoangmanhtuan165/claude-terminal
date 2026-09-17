@@ -208,10 +208,30 @@ function paletteActions() {
         },
       },
       {
+        icon: 'layers',
+        title: 'Danh sách tab đang mở',
+        run: () => dom.btnTabList.click(),
+      },
+      {
+        icon: 'layers',
+        title: 'Không gian làm việc đã lưu',
+        run: () => dom.btnWorkspaces.click(),
+      },
+      {
+        icon: 'broadcast',
+        title: 'Gửi lệnh đồng thời tới nhiều tab SSH',
+        run: () => dom.btnBroadcast.click(),
+      },
+      {
         icon: 'clock',
         title: 'Mở lịch sử',
         hint: 'Ctrl+H',
         run: () => showScreen('history'),
+      },
+      {
+        icon: 'gauge',
+        title: 'Thống kê sử dụng',
+        run: () => showScreen('stats'),
       },
       {
         icon: 'search',

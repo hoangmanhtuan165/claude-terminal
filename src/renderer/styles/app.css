@@ -103,6 +103,83 @@ body[data-platform='darwin'] .titlebar {
   font-size: 11px;
 }
 
+/* Neo vo hinh cho menu bat ra (danh sach tab, workspace, broadcast, theme).
+   Khong dung display:none - menu can getBoundingClientRect() that de dat vi
+   tri. Trai rong dung bang o Ctrl+K va nam de len no, nen menu bat ra roi
+   dung cho nguoi dung vua bam. */
+.palette-entry-wrap {
+  position: relative;
+  display: flex;
+}
+
+.titlebar-anchors {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.titlebar-anchors button {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Loi vao chinh: o "Tim lenh..." thay cho icon khong nhan - nguoi moi khong
+   doan duoc phim tat, con nguoi quen van bam Ctrl+K nhu cu. */
+.palette-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 190px;
+  padding: 4px var(--sp-2) 4px var(--sp-3);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-full);
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.palette-entry:hover {
+  background: var(--bg-active);
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.palette-entry-label {
+  flex: 1;
+  text-align: left;
+}
+
+.palette-entry .kbd {
+  flex-shrink: 0;
+}
+
+.palette-entry .icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+/* Cua so hep: o tim co lai con icon, nhuong cho cho tab. */
+@media (max-width: 1100px) {
+  .palette-entry {
+    min-width: 0;
+  }
+  .palette-entry-label,
+  .palette-entry .kbd {
+    display: none;
+  }
+}
+
 .titlebar-right {
   display: flex;
   align-items: center;
@@ -680,21 +757,6 @@ body[data-platform='darwin'] .titlebar {
   animation: pulse-soft 1.1s ease-in-out infinite;
 }
 
-/* Nut bypass permissions trong hang go nhanh, dang bat cho du an hien tai. */
-.quick-chip-icon.is-active {
-  color: var(--danger);
-  background: var(--danger-soft);
-  border-color: var(--danger);
-}
-
-/* Nut che do Auto trong hang go nhanh, dang bat cho du an hien tai - mau nhe
-   hon bypass permissions vi Auto van dung lai hoi khi gap viec rui ro. */
-.quick-chip-icon.is-auto-on {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent);
-}
-
 @keyframes pulse-soft {
   0%,
   100% {
@@ -821,13 +883,6 @@ body[data-platform='darwin'] .titlebar {
   min-height: 0;
   background: var(--bg-surface);
   border-right: 1px solid var(--border-subtle);
-}
-
-.sidebar-scroll {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
 }
 
 /* Mot cot cuon chung cho ca ba muc PHIEN / DU AN / MAY CHU. Tung muc (.sidebar-block)

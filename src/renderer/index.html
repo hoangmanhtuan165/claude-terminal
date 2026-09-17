@@ -26,18 +26,6 @@
 
         <div id="tab-strip" class="tab-strip"></div>
 
-        <button id="btn-tab-list" class="icon-btn" title="Danh sách tab">
-          <span data-icon="chevron-down"></span>
-        </button>
-
-        <button id="btn-workspaces" class="icon-btn" title="Không gian làm việc đã lưu">
-          <span data-icon="layers"></span>
-        </button>
-
-        <button id="btn-broadcast" class="icon-btn" title="Gửi lệnh đồng thời tới nhiều tab SSH">
-          <span data-icon="broadcast"></span>
-        </button>
-
         <button id="btn-new-claude" class="icon-btn" title="Tab Claude mới (Ctrl+T)">
           <span data-icon="plus"></span>
         </button>
@@ -55,17 +43,35 @@
             <span class="status-icon" data-icon="gauge"></span>
             <span id="status-usage"></span>
           </button>
-          <button id="btn-palette" class="icon-btn" title="Bảng lệnh (Ctrl+K)">
-            <span data-icon="terminal-prompt"></span>
-          </button>
+          <!--
+            Lối vào chính của app: mọi lệnh đều nằm trong đây. Để dạng ô tìm
+            kiếm (không phải icon) vì người mới không đoán được phím tắt.
+          -->
+          <!--
+            Neo vô hình cho các menu bật ra: danh sách tab, không gian làm việc,
+            broadcast, đổi theme. Lệnh của chúng đã chuyển hết vào bảng lệnh
+            (Ctrl+K) để titlebar không đeo 9 icon không nhãn, nhưng các module
+            vẫn cần một phần tử để neo menu — đặt ngay tại ô Ctrl+K nên menu
+            bật ra vẫn rơi đúng chỗ người dùng vừa bấm.
+          -->
+          <div class="palette-entry-wrap">
+            <button id="btn-palette" class="palette-entry" title="Bảng lệnh — mọi lệnh đều ở đây">
+              <span class="status-icon" data-icon="search"></span>
+              <span class="palette-entry-label">Tìm lệnh...</span>
+              <kbd class="kbd">Ctrl+K</kbd>
+            </button>
+            <div class="titlebar-anchors" aria-hidden="true">
+              <button id="btn-tab-list" tabindex="-1" title="Danh sách tab"></button>
+              <button id="btn-workspaces" tabindex="-1" title="Không gian làm việc đã lưu"></button>
+              <button id="btn-broadcast" tabindex="-1" title="Gửi lệnh đồng thời tới nhiều tab SSH"></button>
+              <button id="btn-theme" tabindex="-1" title="Đổi sáng/tối"></button>
+            </div>
+          </div>
           <button id="nav-history" class="icon-btn" title="Lịch sử (Ctrl+H)">
             <span data-icon="clock"></span>
           </button>
           <button id="nav-stats" class="icon-btn" title="Thống kê">
             <span data-icon="gauge"></span>
-          </button>
-          <button id="btn-theme" class="icon-btn" title="Đổi sáng/tối">
-            <span data-icon="contrast"></span>
           </button>
           <!--
             Tài khoản Claude: chỉ hiển thị thông tin không bí mật (gói, hạn mức,
