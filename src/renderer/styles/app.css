@@ -44,7 +44,7 @@ button {
 
 .app {
   display: grid;
-  grid-template-rows: var(--titlebar-h) 1fr 26px;
+  grid-template-rows: var(--titlebar-h) 1fr;
   height: 100vh;
 }
 
@@ -110,6 +110,42 @@ body[data-platform='darwin'] .titlebar {
   flex-shrink: 0;
   margin-left: auto;
   padding-left: var(--sp-2);
+}
+
+/* Nut chu tren titlebar (tai khoan, muc dung, cap nhat) - thay cho cac o cu
+   o thanh trang thai da bo. */
+.pill-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 200px;
+  padding: 3px var(--sp-2);
+  background: var(--bg-hover);
+  border: none;
+  border-radius: var(--r-full);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.pill-button > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pill-button:hover {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.pill-button .icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--text-tertiary);
 }
 
 .workspace {
@@ -457,8 +493,49 @@ body[data-platform='darwin'] .titlebar {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-1);
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Hang thao tac o day man hinh terminal ---------------------------------- */
+
+.action-row {
   flex-shrink: 0;
-  padding: var(--sp-2) var(--sp-3) 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.action-row-main {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+
+.action-row-toggle {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  transition: transform var(--dur-base) var(--ease);
+}
+
+/* Thu gon: an het chip, chi con mot dai mong voi nut mo lai - lay toan bo
+   chieu cao con lai cho terminal. */
+.action-row.is-collapsed {
+  padding: 0 var(--sp-3);
+}
+
+.action-row.is-collapsed .quick-bar,
+.action-row.is-collapsed .quick-bar-ssh {
+  display: none;
+}
+
+.action-row.is-collapsed .action-row-main {
+  justify-content: center;
+}
+
+.action-row.is-collapsed .action-row-toggle {
+  transform: rotate(180deg);
+  height: 18px;
 }
 
 .quick-chip {
@@ -1811,65 +1888,7 @@ details.block pre {
 
 /* --- Thanh trang thai ---------------------------------------------------- */
 
-.statusbar {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 0 var(--sp-2);
-  background: var(--bg-surface);
-  border-top: 1px solid var(--border-subtle);
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-}
-
-.status-item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  min-width: 0;
-  padding: 2px var(--sp-2);
-  overflow: hidden;
-  background: var(--bg-hover);
-  border-radius: var(--r-full);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  transition: background var(--dur-fast) var(--ease);
-}
-
-.status-item:has(#status-shell:empty),
-.status-item:has(#status-history:empty) {
-  display: none;
-}
-
-.status-item .icon {
-  width: 12px;
-  height: 12px;
-  color: var(--text-tertiary);
-}
-
-/* Doan van ban co the dai (duong dan cwd) - phai co the co lai khi statusbar hep */
-.status-item > span:last-child {
-  overflow: hidden;
-  min-width: 0;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* O chon model: van la mot status-item nhung bam duoc */
-.status-button {
-  border: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.status-button:hover {
-  background: var(--bg-active);
-  color: var(--text-primary);
-}
-
-/* Menu chon model, neo phia tren nut o thanh trang thai */
+/* Menu chon model, neo ngay duoi nut o context bar */
 .model-menu {
   position: fixed;
   z-index: 120;
@@ -1915,34 +1934,34 @@ details.block pre {
 }
 
 /* Nut tai khoan khi can chu y (chua dang nhap / sap phai dang nhap lai) */
-.status-button.is-warning {
+.pill-button.is-warning {
   background: var(--danger-soft);
   color: var(--danger);
 }
 
-.status-button.is-warning .icon {
+.pill-button.is-warning .icon {
   color: var(--danger);
 }
 
 /* Muc dung o nguong canh bao vua (>= 70%) - dung mau nhan, chua phai bao dong */
-.status-button.is-caution {
+.pill-button.is-caution {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.status-button.is-caution .icon {
+.pill-button.is-caution .icon {
   color: var(--accent);
 }
 
 /* Ngu canh phien sap day, Claude Code sap tu nen (>= 95%) - noi bat hon ca
-   is-warning thuong, nhap nhay nhe de khong bi lo giua thanh trang thai. */
-.status-button.is-critical {
+   is-warning thuong, nhap nhay nhe de khong bi lo tren titlebar. */
+.pill-button.is-critical {
   background: var(--danger-soft);
   color: var(--danger);
   animation: pulse-soft 1.4s ease-in-out infinite;
 }
 
-.status-button.is-critical .icon {
+.pill-button.is-critical .icon {
   color: var(--danger);
 }
 
@@ -2495,10 +2514,6 @@ details.block pre {
   line-height: 1.5;
 }
 
-.status-right {
-  margin-left: auto;
-}
-
 /* --- Thanh cuon ---------------------------------------------------------- */
 
 ::-webkit-scrollbar {
@@ -2707,7 +2722,7 @@ details.block pre {
 /* --- Hang lenh nhanh rieng cho tab SSH (quick-send.js) --------------------- */
 
 .quick-bar-ssh {
-  padding-top: 2px;
+  margin-bottom: var(--sp-2);
 }
 
 .quick-chip-ssh {

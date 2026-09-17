@@ -20,9 +20,6 @@ const dom = {
   sessionsSidebar: el('sessions-sidebar'),
   sidebar: el('projects-sidebar'),
   sshSidebar: el('ssh-sidebar'),
-  statusCwd: el('status-cwd'),
-  statusShell: el('status-shell'),
-  statusHistory: el('status-history'),
   navHistory: el('nav-history'),
   navStats: el('nav-stats'),
   btnTabList: el('btn-tab-list'),
@@ -31,6 +28,8 @@ const dom = {
   btnNewClaude: el('btn-new-claude'),
   btnPalette: el('btn-palette'),
   btnTheme: el('btn-theme'),
+  btnCollapseActions: el('btn-collapse-actions'),
+  actionRow: el('action-row'),
   paletteRoot: el('palette-root'),
   contextBar: el('context-bar'),
   quickBar: el('quick-bar'),
@@ -41,7 +40,6 @@ const dom = {
   statusUsage: el('status-usage'),
   updateButton: el('update-button'),
   statusUpdate: el('status-update'),
-  statusBranch: el('status-branch'),
 };
 
 const historyElements = {
@@ -130,12 +128,7 @@ async function restoreWorkspacePreset(preset) {
   }
 }
 
-/** Tang moi lan doi tab - dam bao ket qua git branch tra ve tra cham cua tab cu khong ghi de tab moi. */
-let branchRequestSeq = 0;
-
 function updateStatusBar() {
-  const tab = terminalTabs.activeTab;
-  dom.statusCwd.textContent = tab?.cwd || '—';
   // Ô tìm bám theo tab đang mở, nên đổi tab là phải tìm lại.
   terminalFind?.handleTabChange();
   // Model được nhớ theo từng dự án nên đổi tab là nhãn phải đổi theo.
@@ -146,18 +139,6 @@ function updateStatusBar() {
   sessionsSidebar?.render();
   projectsSidebar?.render();
   sshSidebar?.render();
-
-  const seq = ++branchRequestSeq;
-  dom.statusBranch.textContent = '';
-  if (tab?.cwd) {
-    window.api.git.branch(tab.cwd).then((branch) => {
-      if (seq !== branchRequestSeq) return;
-      dom.statusBranch.textContent = branch || '';
-      dom.statusBranch.closest('.status-item').classList.toggle('is-hidden', !branch);
-    });
-  } else {
-    dom.statusBranch.closest('.status-item').classList.add('is-hidden');
-  }
 }
 
 /** Tap cwd (chữ thường) đang có ít nhất một tab mở - dùng cho chấm sidebar. */
@@ -277,14 +258,12 @@ function paletteActions() {
 async function refreshHistory() {
   await historyPanel.refreshIndex();
   await projectsSidebar.reload();
-  dom.statusHistory.textContent = `${historyPanel.sessions.length} phiên đã lưu`;
 }
 
 async function exportActiveLog() {
   const tab = terminalTabs.activeTab;
   if (!tab) return;
-  const result = await window.api.scrollback.export(tab.id, tab.title.replace(/[^\w.-]+/g, '-'));
-  if (result.saved) dom.statusHistory.textContent = `Đã xuất: ${result.filePath}`;
+  await window.api.scrollback.export(tab.id, tab.title.replace(/[^\w.-]+/g, '-'));
 }
 
 // --- Khởi động -------------------------------------------------------------
@@ -387,6 +366,13 @@ async function bootstrap() {
   });
   await quickSend.loadPrefs();
 
+  // Khoi phuc trang thai thu gon hang go nhanh tu lan dung truoc.
+  const uiPrefs = await window.api.prefs.get();
+  if (uiPrefs.actionRowCollapsed) {
+    dom.actionRow.classList.add('is-collapsed');
+    dom.btnCollapseActions.title = 'Mở lại hàng gõ nhanh';
+  }
+
   accountPanel = new window.AccountPanel({
     button: dom.accountButton,
     label: dom.statusAccount,
@@ -406,7 +392,6 @@ async function bootstrap() {
   bindChrome();
 
   const info = await window.api.app.info();
-  dom.statusShell.textContent = window.formatUtils.baseName(info.shell);
   // macOS dat den giao thong ben trai thanh tieu de (Windows/Linux dat nut o
   // ben phai) - CSS doc co nay de doi le tab-strip cho dung ben.
   document.body.dataset.platform = info.platform;
@@ -434,6 +419,15 @@ function bindChrome() {
     openTerminal({ cwd: terminalTabs.activeTab?.cwd, sessionType: 'claude' }),
   );
   dom.btnPalette.addEventListener('click', () => commandPalette.toggle());
+
+  // Thu gon hang go nhanh khi can toan man hinh cho terminal. Nho lua chon
+  // qua cac lan mo app - day la thoi quen ca nhan, khong phai trang thai tam.
+  dom.btnCollapseActions.addEventListener('click', () => {
+    const collapsed = dom.actionRow.classList.toggle('is-collapsed');
+    dom.btnCollapseActions.title = collapsed ? 'Mở lại hàng gõ nhanh' : 'Thu gọn hàng gõ nhanh';
+    window.api.prefs.set({ actionRowCollapsed: collapsed });
+    terminalTabs.handleShown();
+  });
 
   window.api.menu.onNewClaudeTab(() =>
     openTerminal({ cwd: terminalTabs.activeTab?.cwd, sessionType: 'claude' }),

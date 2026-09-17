@@ -37,6 +37,9 @@ const DEFAULT_SETTINGS = {
   promptLibrary: [],
   // Co chu terminal (xterm), doc lap voi zoom toan bo giao dien.
   terminalFontSize: 13,
+  // Thu gon hang go nhanh o day man hinh terminal - thoi quen ca nhan, nho
+  // qua cac lan mo app.
+  actionRowCollapsed: false,
 };
 
 /**

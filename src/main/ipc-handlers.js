@@ -654,6 +654,8 @@ function register(getWindow) {
   const PREF_SANITIZERS = {
     hideSmallSessions: (value) => Boolean(value),
 
+    actionRowCollapsed: (value) => Boolean(value),
+
     quickItems: (value) =>
       Array.isArray(value)
         ? value

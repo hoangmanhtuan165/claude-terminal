@@ -43,6 +43,18 @@
         </button>
 
         <div class="titlebar-right">
+          <!--
+            Cập nhật và mức dùng: chỉ hiện khi có gì cần biết (có bản mới, hoặc
+            hạn mức sắp chạm) - bình thường titlebar không đeo thêm gì.
+          -->
+          <button id="update-button" class="pill-button is-hidden" title="Có bản cập nhật mới">
+            <span class="status-icon" data-icon="download"></span>
+            <span id="status-update"></span>
+          </button>
+          <button id="usage-button" class="pill-button is-hidden" title="Mức sử dụng">
+            <span class="status-icon" data-icon="gauge"></span>
+            <span id="status-usage"></span>
+          </button>
           <button id="btn-palette" class="icon-btn" title="Bảng lệnh (Ctrl+K)">
             <span data-icon="terminal-prompt"></span>
           </button>
@@ -54,6 +66,15 @@
           </button>
           <button id="btn-theme" class="icon-btn" title="Đổi sáng/tối">
             <span data-icon="contrast"></span>
+          </button>
+          <!--
+            Tài khoản Claude: chỉ hiển thị thông tin không bí mật (gói, hạn mức,
+            hạn token). Mọi thao tác đăng nhập đều do `claude /login` lo, app chỉ
+            gõ lệnh đó xuống terminal.
+          -->
+          <button id="account-button" class="pill-button" title="Tài khoản Claude">
+            <span class="status-icon" data-icon="user"></span>
+            <span id="status-account">tài khoản</span>
           </button>
         </div>
       </header>
@@ -76,18 +97,11 @@
           <!-- Màn hình terminal -->
           <section id="terminal-screen" class="screen">
             <!--
-              Hàng gõ nhanh: bấm là gõ thẳng câu đó xuống terminal đang chạy.
-              Đo trên 4044 prompt thật: "tiếp tục" 146 lần, "tiếp" 78, "ok" 36 —
-              hơn 270 lần gõ lại đúng vài chữ.
-            -->
-            <!--
               Context bar: đổi theo loại tab đang mở. Tab Claude: tên phiên,
               chế độ quyền (Hỏi/Auto/Bypass), model, công cụ. Tab SSH: host +
               lệnh nhanh của host. Tab shell: chỉ đường dẫn.
             -->
             <div id="context-bar" class="context-bar"></div>
-            <div id="quick-bar" class="quick-bar"></div>
-            <div id="quick-bar-ssh" class="quick-bar quick-bar-ssh is-hidden"></div>
 
             <div id="terminal-pane" class="terminal-pane">
               <!-- Tìm trong terminal, hiện bằng Ctrl+F -->
@@ -107,6 +121,22 @@
                   <span data-icon="x"></span>
                 </button>
                 <div id="term-find-all-results" class="term-find-all-results is-hidden"></div>
+              </div>
+            </div>
+
+            <!--
+              Hàng gõ nhanh nằm sát đáy, ngay cạnh chỗ gõ: bấm là gõ thẳng câu
+              đó xuống terminal. Đo trên 4044 prompt thật: "tiếp tục" 146 lần,
+              "tiếp" 78, "ok" 36 — hơn 270 lần gõ lại đúng vài chữ.
+              Thu gọn được bằng nút ▾ khi cần toàn màn hình.
+            -->
+            <div id="action-row" class="action-row">
+              <div id="quick-bar-ssh" class="quick-bar quick-bar-ssh is-hidden"></div>
+              <div class="action-row-main">
+                <div id="quick-bar" class="quick-bar"></div>
+                <button id="btn-collapse-actions" class="icon-btn action-row-toggle" title="Thu gọn hàng gõ nhanh">
+                  <span data-icon="chevron-down"></span>
+                </button>
               </div>
             </div>
           </section>
@@ -195,45 +225,6 @@
         </main>
       </div>
 
-      <footer class="statusbar">
-        <span class="status-item">
-          <span class="status-icon" data-icon="folder"></span>
-          <span id="status-cwd">—</span>
-        </span>
-        <!--
-          Tài khoản Claude: chỉ hiển thị thông tin không bí mật (gói, hạn mức,
-          hạn token). Mọi thao tác đăng nhập đều do `claude /login` lo, app chỉ
-          gõ lệnh đó xuống terminal.
-        -->
-        <button id="account-button" class="status-item status-button" title="Tài khoản Claude">
-          <span class="status-icon" data-icon="user"></span>
-          <span id="status-account">tài khoản</span>
-        </button>
-        <!--
-          Mức dùng: % hạn mức phiên 5 giờ (gọi API) và % context của phiên đang
-          chạy (đọc file). Bấm vào mở menu tài khoản để xem chi tiết.
-        -->
-        <button id="usage-button" class="status-item status-button is-hidden" title="Mức sử dụng">
-          <span class="status-icon" data-icon="gauge"></span>
-          <span id="status-usage"></span>
-        </button>
-        <button id="update-button" class="status-item status-button is-hidden" title="Có bản cập nhật mới">
-          <span class="status-icon" data-icon="download"></span>
-          <span id="status-update"></span>
-        </button>
-        <span class="status-item is-hidden">
-          <span class="status-icon" data-icon="git-branch"></span>
-          <span id="status-branch"></span>
-        </span>
-        <span class="status-item">
-          <span class="status-icon" data-icon="terminal-prompt"></span>
-          <span id="status-shell"></span>
-        </span>
-        <span class="status-item status-right">
-          <span class="status-icon" data-icon="clock"></span>
-          <span id="status-history"></span>
-        </span>
-      </footer>
     </div>
 
     <!-- Bảng lệnh, mở bằng Ctrl+K -->
