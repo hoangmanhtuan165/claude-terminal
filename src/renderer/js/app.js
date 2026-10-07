@@ -32,11 +32,14 @@ const dom = {
   actionRow: el('action-row'),
   paletteRoot: el('palette-root'),
   contextBar: el('context-bar'),
+  bypassBanner: el('bypass-banner'),
+  composer: el('composer'),
   quickBar: el('quick-bar'),
   quickBarSsh: el('quick-bar-ssh'),
   accountButton: el('account-button'),
   statusAccount: el('status-account'),
   usageButton: el('usage-button'),
+  usageCard: el('usage-card'),
   statusUsage: el('status-usage'),
   updateButton: el('update-button'),
   statusUpdate: el('status-update'),
@@ -289,6 +292,15 @@ async function exportActiveLog() {
 // --- Khởi động -------------------------------------------------------------
 
 async function bootstrap() {
+  // xterm do do rong o ky tu ngay khi mo terminal: font chua tai xong thi no
+  // do theo font du phong, roi khi JetBrains Mono ve toi thi chu lech cot.
+  // Nap truoc ca hai font (dong goi tai cho, nhanh) - loi thi bo qua, terminal
+  // van chay voi font du phong.
+  await Promise.all([
+    document.fonts.load("13px 'JetBrains Mono Variable'"),
+    document.fonts.load("13px 'Geist Variable'"),
+  ]).catch(() => {});
+
   themeManager = new window.ThemeManager({ toggleButton: dom.btnTheme });
   await themeManager.init();
 
@@ -335,6 +347,7 @@ async function bootstrap() {
     element: dom.sessionsSidebar,
     getTabs: () => terminalTabs.tabs,
     getActiveTabId: () => terminalTabs.activeTabId,
+    getStatus: (tab) => terminalTabs.statusOfTab(tab),
     onActivate: (tabId) => {
       showScreen('terminal');
       terminalTabs.activate(tabId);
@@ -377,10 +390,14 @@ async function bootstrap() {
 
   quickSend = new window.QuickSend({
     contextBarElement: dom.contextBar,
+    bypassBannerElement: dom.bypassBanner,
+    composerElement: dom.composer,
     quickBarElement: dom.quickBar,
     sshQuickBarElement: dom.quickBarSsh,
     getActivePane: () => terminalTabs.activePane,
-    onPickFiles: (pane) => terminalTabs.pickAndInsertFiles(pane),
+    onPickFiles: (pane, insert) => terminalTabs.pickAndInsertFiles(pane, insert),
+    onPasteInto: (pane, insert) => terminalTabs.pasteInto(pane, insert),
+    getReference: (pane, filePath) => terminalTabs.referenceForFile(pane, filePath),
     onSetPermissionMode: (pane, mode) => terminalTabs.setPermissionModeForPane(pane, mode),
     onNeedTerminal: () => showScreen('terminal'),
   });
@@ -397,6 +414,7 @@ async function bootstrap() {
     button: dom.accountButton,
     label: dom.statusAccount,
     usageButton: dom.usageButton,
+    usageCard: dom.usageCard,
     usageLabel: dom.statusUsage,
     updateButton: dom.updateButton,
     updateLabel: dom.statusUpdate,

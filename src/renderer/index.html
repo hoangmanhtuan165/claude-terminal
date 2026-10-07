@@ -12,6 +12,9 @@
     />
     <title>KLTERMINAL</title>
     <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css" />
+    <!-- Font đóng gói tại chỗ: CSP (font-src 'self') chặn mọi font tải từ mạng. -->
+    <link rel="stylesheet" href="../../node_modules/@fontsource-variable/geist/index.css" />
+    <link rel="stylesheet" href="../../node_modules/@fontsource-variable/jetbrains-mono/index.css" />
     <link rel="stylesheet" href="styles/tokens.css" />
     <link rel="stylesheet" href="styles/app.css" />
   </head>
@@ -20,7 +23,7 @@
       <!-- Thanh tiêu đề: tab nằm thẳng trên đây, nút cửa sổ do Windows vẽ ở góc phải -->
       <header class="titlebar">
         <div class="brand">
-          <span class="brand-mark" data-icon="diamond"></span>
+          <span class="brand-mark" data-icon="prompt"></span>
           <span>KLTERMINAL</span>
         </div>
 
@@ -57,8 +60,8 @@
           <div class="palette-entry-wrap">
             <button id="btn-palette" class="palette-entry" title="Bảng lệnh — mọi lệnh đều ở đây">
               <span class="status-icon" data-icon="search"></span>
-              <span class="palette-entry-label">Tìm lệnh...</span>
-              <kbd class="kbd">Ctrl+K</kbd>
+              <span class="palette-entry-label">Tìm lệnh, dự án, phiên…</span>
+              <kbd class="kbd">Ctrl K</kbd>
             </button>
             <div class="titlebar-anchors" aria-hidden="true">
               <button id="btn-tab-list" tabindex="-1" title="Danh sách tab"></button>
@@ -71,15 +74,15 @@
             <span data-icon="clock"></span>
           </button>
           <button id="nav-stats" class="icon-btn" title="Thống kê">
-            <span data-icon="gauge"></span>
+            <span data-icon="bars"></span>
           </button>
           <!--
             Tài khoản Claude: chỉ hiển thị thông tin không bí mật (gói, hạn mức,
             hạn token). Mọi thao tác đăng nhập đều do `claude /login` lo, app chỉ
             gõ lệnh đó xuống terminal.
           -->
-          <button id="account-button" class="pill-button" title="Tài khoản Claude">
-            <span class="status-icon" data-icon="user"></span>
+          <button id="account-button" class="pill-button account-pill" title="Tài khoản Claude">
+            <span class="account-avatar" data-icon="user"></span>
             <span id="status-account">tài khoản</span>
           </button>
         </div>
@@ -97,6 +100,7 @@
             <div id="projects-sidebar" class="sidebar-block"></div>
             <div id="ssh-sidebar" class="sidebar-block"></div>
           </div>
+          <button id="usage-card" class="usage-card" hidden></button>
         </aside>
 
         <main class="content">
@@ -108,6 +112,10 @@
               lệnh nhanh của host. Tab shell: chỉ đường dẫn.
             -->
             <div id="context-bar" class="context-bar"></div>
+            <div id="bypass-banner" class="bypass-banner" role="status" hidden>
+              <span class="sess-dot" data-status="danger"></span>
+              <span>Bypass đang bật — Claude sẽ sửa file và chạy lệnh mà không hỏi lại. Chỉ áp dụng cho tab mở sau.</span>
+            </div>
 
             <div id="terminal-pane" class="terminal-pane">
               <!-- Tìm trong terminal, hiện bằng Ctrl+F -->
@@ -138,7 +146,34 @@
             -->
             <div id="action-row" class="action-row">
               <div id="quick-bar-ssh" class="quick-bar quick-bar-ssh is-hidden"></div>
+              <!--
+                Ô nhập lệnh: gõ thoải mái nhiều dòng, sửa lại trước khi gửi, rồi
+                Enter là chuyển cả khối xuống phiên đang mở (dán + Enter). Gõ
+                thẳng vào terminal vẫn chạy như cũ - đây là lối gõ thứ hai, không
+                thay thế.
+              -->
+              <div id="composer" class="composer">
+                <span class="composer-prompt" aria-hidden="true">›</span>
+                <label class="sr-only" for="composer-input">Nội dung gửi xuống phiên đang mở</label>
+                <textarea id="composer-input" class="composer-input" rows="1" spellcheck="false" placeholder="Nhập lệnh hoặc câu hỏi…"></textarea>
+                <div class="composer-tools">
+                  <button class="icon-btn" data-composer="expand" title="Nhờ Claude viết lại câu hỏi này rõ ràng, chi tiết hơn">
+                    <span data-icon="sparkle"></span>
+                  </button>
+                  <button class="icon-btn" data-composer="attach" title="Chèn file">
+                    <span data-icon="paperclip"></span>
+                  </button>
+                  <button class="icon-btn" data-composer="screenshot" title="Chụp màn hình rồi chèn vào">
+                    <span data-icon="camera"></span>
+                  </button>
+                </div>
+                <span class="composer-hint">Enter gửi · Shift+Enter xuống dòng</span>
+                <button class="composer-send" data-composer="send" aria-label="Gửi">
+                  <span data-icon="send"></span>
+                </button>
+              </div>
               <div class="action-row-main">
+                <span class="quick-label">Gõ nhanh</span>
                 <div id="quick-bar" class="quick-bar"></div>
                 <button id="btn-collapse-actions" class="icon-btn action-row-toggle" title="Thu gọn hàng gõ nhanh">
                   <span data-icon="chevron-down"></span>

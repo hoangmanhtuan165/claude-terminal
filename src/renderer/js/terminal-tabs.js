@@ -165,6 +165,7 @@ class TerminalTabs {
   _setPaneStatus(pane, status) {
     if (pane.status === status) return;
     pane.status = status;
+    this._renderStrip();
     this.onStatusChange?.();
   }
 
@@ -299,7 +300,7 @@ class TerminalTabs {
     wrapper.dataset.paneId = id;
 
     const term = new window.Terminal({
-      fontFamily: 'Cascadia Mono, Consolas, Menlo, monospace',
+      fontFamily: "'JetBrains Mono Variable', 'Cascadia Mono', Consolas, Menlo, monospace",
       fontSize: this.fontSize,
       lineHeight: 1.2,
       cursorBlink: true,
@@ -671,35 +672,52 @@ class TerminalTabs {
    * cho moi CLI khac. De nguoi dung con thay minh vua dan dung anh, tu ve
    * mot the xem truoc noi (giong het khi bam nut "Chup man hinh" o quick-send).
    */
-  async _pasteFromClipboard(pane) {
+  /**
+   * Doi mot file tren may nay thanh chuoi tham chieu Claude Code hieu duoc.
+   * Tab SSH: file phai len may chu truoc (Claude chay o do, khong doc duoc o
+   * dia Windows) - upload roi tra ve duong dan tren may chu. Loi upload thi
+   * bao thang vao terminal va tra ve null.
+   */
+  async referenceForFile(pane, filePath) {
+    if (pane.sessionType === 'ssh' && pane.sshHostId) {
+      const fileName = filePath.split(/[\\/]/).pop();
+      pane.term.write(`\r\n\x1b[90m--- đang tải ${fileName} lên máy chủ... ---\x1b[0m\r\n`);
+      const result = await window.api.ssh.uploadFile(pane.sshHostId, filePath);
+      if (!result.ok) {
+        pane.term.write(`\x1b[31m--- lỗi tải ${fileName} lên: ${result.error} ---\x1b[0m\r\n`);
+        return null;
+      }
+      return `@${result.remotePath}`;
+    }
+    return /\s/.test(filePath) ? `"${filePath}"` : `@${filePath}`;
+  }
+
+  /**
+   * Dan clipboard vao dau do: mac dinh la terminal, o nhap lenh truyen
+   * `insert` cua no vao de anh/chu roi vao o nhap thay vi PTY.
+   */
+  async _pasteFromClipboard(pane, insert = (text) => pane.term.paste(text)) {
     try {
       const image = await window.api.clipboard.pasteImage();
       if (image) {
-        const { filePath, dataUrl } = image;
-        if (pane.sessionType === 'ssh' && pane.sshHostId) {
-          const fileName = filePath.split(/[\\/]/).pop();
-          pane.term.write(`\r\n\x1b[90m--- đang tải ảnh lên ${fileName}... ---\x1b[0m\r\n`);
-          const result = await window.api.ssh.uploadFile(pane.sshHostId, filePath);
-          if (result.ok) {
-            pane.term.paste(`@${result.remotePath}`);
-            this._showPastePreview(pane, dataUrl);
-          } else {
-            pane.term.write(`\x1b[31m--- lỗi tải ảnh lên: ${result.error} ---\x1b[0m\r\n`);
-          }
-          return;
+        const reference = await this.referenceForFile(pane, image.filePath);
+        if (reference) {
+          insert(reference);
+          this._showPastePreview(pane, image.dataUrl);
         }
-
-        const reference = /\s/.test(filePath) ? `"${filePath}"` : `@${filePath}`;
-        pane.term.paste(reference);
-        this._showPastePreview(pane, dataUrl);
         return;
       }
 
       const text = await window.api.clipboard.readText();
-      if (text) pane.term.paste(text);
+      if (text) insert(text);
     } catch (err) {
       pane.term.write(`\r\n\x1b[31m--- lỗi dán: ${err?.message || err} ---\x1b[0m\r\n`);
     }
+  }
+
+  /** Dan clipboard vao o nhap lenh (ho tro anh nhu terminal). */
+  pasteInto(pane, insert) {
+    return this._pasteFromClipboard(pane, insert);
   }
 
   /**
@@ -743,28 +761,18 @@ class TerminalTabs {
    * chen thang @localPath - giong het co che _pasteFromClipboard nhung nguon
    * la dialog thay vi clipboard.
    */
-  async pickAndInsertFiles(pane) {
+  async pickAndInsertFiles(pane, insert = (text) => pane.term.paste(text)) {
     try {
       const filePaths = await window.api.files.pickAttachments();
       if (!filePaths || filePaths.length === 0) return;
 
       const references = [];
       for (const filePath of filePaths) {
-        const fileName = filePath.split(/[\\/]/).pop();
-        if (pane.sessionType === 'ssh' && pane.sshHostId) {
-          pane.term.write(`\r\n\x1b[90m--- đang tải ${fileName} lên máy chủ... ---\x1b[0m\r\n`);
-          const result = await window.api.ssh.uploadFile(pane.sshHostId, filePath);
-          if (result.ok) {
-            references.push(`@${result.remotePath}`);
-          } else {
-            pane.term.write(`\x1b[31m--- lỗi tải ${fileName} lên: ${result.error} ---\x1b[0m\r\n`);
-          }
-          continue;
-        }
-        references.push(/\s/.test(filePath) ? `"${filePath}"` : `@${filePath}`);
+        const reference = await this.referenceForFile(pane, filePath);
+        if (reference) references.push(reference);
       }
 
-      if (references.length > 0) pane.term.paste(references.join(' '));
+      if (references.length > 0) insert(references.join(' '));
     } catch (err) {
       pane.term.write(`\r\n\x1b[31m--- lỗi chèn file: ${err?.message || err} ---\x1b[0m\r\n`);
     }
@@ -1297,13 +1305,16 @@ class TerminalTabs {
       button.classList.toggle('is-dead', !anyAlive);
       const isSshTab = tab.panes.some((p) => p.sessionType === 'ssh');
       button.classList.toggle('is-broadcast-target', this.broadcastMode && isSshTab);
-      const skipPermissions = tab.panes.some((p) => p.skipPermissions);
+      const skipPermissions = tab.panes.some((p) => this._isBypassPane(p));
+      button.classList.toggle('is-bypass', skipPermissions);
       button.title = [firstPane?.cwd, skipPermissions ? '⚠ --dangerously-skip-permissions' : '']
         .filter(Boolean)
         .join('\n');
+      const { label: tabLabel, kind: tabKind } = this._splitTitle(tab, firstPane);
       button.innerHTML = `
-        <span class="tab-dot" data-type="${escapeHtml(firstPane?.sessionType || 'shell')}" data-skip="${skipPermissions}"></span>
-        <span class="tab-label">${escapeHtml(tab.title)}</span>
+        <span class="sess-dot" data-status="${this.statusOfTab(tab)}"></span>
+        <span class="tab-label">${escapeHtml(tabLabel)}</span>
+        ${tabKind ? `<span class="tab-kind">${escapeHtml(tabKind)}</span>` : ''}
         ${tab.panes.length > 1 ? `<span class="tab-split-badge" title="Tab này đang chia đôi">${window.icons.svg('split', { size: 11 })}</span>` : ''}
         <span class="tab-close" role="button" aria-label="Đóng tab">${window.icons.svg('x', { size: 12 })}</span>
       `;
@@ -1335,6 +1346,39 @@ class TerminalTabs {
 
     this.stripElement.append(indicator);
     this._positionIndicator();
+  }
+
+  /**
+   * Trang thai ca tab = trang thai "khan" nhat trong cac pane: dang cho ban >
+   * dang chay Bypass > dang chay > ranh > da ket thuc. Dung chung cho cham
+   * tren tab va hang o muc PHIEN de hai noi khong bao khac nhau.
+   */
+  statusOfTab(tab) {
+    const statuses = tab.panes.map((p) => p.status || (p.alive ? 'idle' : 'dead'));
+    if (statuses.includes('waiting')) return 'waiting';
+    if (tab.panes.some((p) => p.alive && this._isBypassPane(p))) return 'danger';
+    for (const s of ['running', 'idle', 'dead']) if (statuses.includes(s)) return s;
+    return 'idle';
+  }
+
+  /**
+   * Bypass chi co nghia voi phien Claude: co skipPermissions duoc lan sang moi
+   * pane cung thu muc (ke ca shell), nen phai loc theo loai phien.
+   */
+  _isBypassPane(pane) {
+    return Boolean(pane.skipPermissions) && (pane.sessionType === 'claude' || pane.sessionType === 'claude-resume');
+  }
+
+  /**
+   * Ten mac dinh dang "claude · hoang" tach thanh ten + nhan loai mo nhat, nhu
+   * thiet ke. Ten nguoi dung tu dat giu nguyen, nhan loai lay tu sessionType.
+   */
+  _splitTitle(tab, firstPane) {
+    const KIND_LABEL = { claude: 'claude', 'claude-resume': 'claude', grok: 'grok', ssh: 'ssh', shell: 'shell' };
+    const kind = KIND_LABEL[firstPane?.sessionType] || 'shell';
+    const match = !tab.renamedManually && /^(claude|resume|shell|grok|ssh) · (.+)$/.exec(tab.title);
+    if (match) return { label: match[2], kind };
+    return { label: tab.title, kind };
   }
 
   /** Truot thanh nen phia sau tab dang active toi vi tri/kich thuoc that. */

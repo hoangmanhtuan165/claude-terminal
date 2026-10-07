@@ -34,7 +34,8 @@ class CommandPalette {
         group: 'Lệnh',
         icon: command.icon || 'chevron-right',
         title: command.title,
-        sub: command.hint || '',
+        sub: '',
+        hint: command.hint || '',
         run: command.run,
       });
     }
@@ -42,7 +43,7 @@ class CommandPalette {
     for (const project of this.actions.projects()) {
       items.push({
         group: 'Dự án',
-        icon: 'chevron-right',
+        icon: 'folder',
         title: baseName(project.cwd) || project.cwd,
         sub: project.cwd,
         run: () => this.actions.openProject(project.cwd),
@@ -103,7 +104,7 @@ class CommandPalette {
   }
 
   _render(query) {
-    const { escapeHtml } = window.formatUtils;
+    const { escapeHtml, fuzzyHighlightHtml } = window.formatUtils;
     this.items = this._filter(query);
     if (this.cursor >= this.items.length) this.cursor = Math.max(0, this.items.length - 1);
 
@@ -115,12 +116,14 @@ class CommandPalette {
         lastGroup = item.group;
       }
       listHtml += `
-        <button class="palette-item${index === this.cursor ? ' is-cursor' : ''}" data-index="${index}">
-          <span class="item-icon">${window.icons.svg(item.icon)}</span>
+        <button class="palette-item${index === this.cursor ? ' is-cursor' : ''}" data-index="${index}" style="animation-delay: ${Math.min(index, 10) * 25}ms">
+          <span class="item-icon">${window.icons.svg(item.icon, { size: 15 })}</span>
           <span class="item-body">
-            <span class="item-title">${escapeHtml(item.title)}</span>
+            <span class="item-title">${fuzzyHighlightHtml(item.title, query)}</span>
             ${item.sub ? `<span class="item-sub">${escapeHtml(item.sub)}</span>` : ''}
           </span>
+          ${item.hint ? `<kbd class="kbd item-hint">${escapeHtml(item.hint)}</kbd>` : ''}
+          <kbd class="kbd item-ret">↵</kbd>
         </button>`;
     });
 
@@ -129,17 +132,27 @@ class CommandPalette {
     }
 
     // Giữ nguyên ô nhập khi vẽ lại để con trỏ soạn thảo không bị nhảy.
+    const countText = query ? `${this.items.length} kết quả` : '';
     const existingInput = this.root.querySelector('.palette-input');
     if (existingInput) {
       this.root.querySelector('.palette-list').innerHTML = listHtml;
+      this.root.querySelector('.palette-count').textContent = countText;
     } else {
       this.root.innerHTML = `
         <div class="palette-backdrop">
           <div class="palette" role="dialog" aria-label="Bảng lệnh">
-            <input class="palette-input" type="text" placeholder="Gõ để tìm dự án, phiên, hoặc lệnh..." autocomplete="off" />
+            <label class="palette-search">
+              ${window.icons.svg('search', { size: 18 })}
+              <input class="palette-input" type="text" placeholder="Tìm lệnh, dự án, phiên…" autocomplete="off" aria-label="Tìm trong bảng lệnh" />
+              <span class="palette-count">${countText}</span>
+              <kbd class="kbd">Esc</kbd>
+            </label>
             <div class="palette-list">${listHtml}</div>
             <div class="palette-footer">
-              <span>↑↓ chọn</span><span>Enter mở</span><span>Esc đóng</span>
+              <span><kbd class="kbd">↑↓</kbd> di chuyển</span>
+              <span><kbd class="kbd">↵</kbd> chọn</span>
+              <span><kbd class="kbd">Esc</kbd> đóng</span>
+              <span class="palette-footer-tip">Khớp mờ: gõ tắt chữ cái đầu, vd "qlt"</span>
             </div>
           </div>
         </div>`;

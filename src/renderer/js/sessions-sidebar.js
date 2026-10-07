@@ -6,20 +6,23 @@
  * loi ma khong phai bam qua tung tab. Day la thu thieu nhat khi mo 3-4 phien
  * Claude/SSH cung luc.
  *
- * Trang thai lay tu `pane.status` (terminal-tabs.js), khong tu tinh o day.
+ * Trang thai lay tu TerminalTabs.statusOfTab (dung chung voi cham tren tab),
+ * khong tu tinh o day - hai noi khong duoc bao khac nhau.
  */
 
 const STATUS_LABEL = {
   running: 'Đang chạy',
-  waiting: 'Đang chờ bạn trả lời',
+  danger: 'Đang chạy · Bypass',
+  waiting: 'Chờ bạn trả lời',
   idle: 'Rảnh',
-  dead: 'Phiên đã kết thúc',
+  dead: 'Đã kết thúc',
 };
 
 class SessionsSidebar {
-  constructor({ element, getTabs, getActiveTabId, onActivate, onClose }) {
+  constructor({ element, getTabs, getActiveTabId, getStatus, onActivate, onClose }) {
     this.element = element;
     this.getTabs = getTabs;
+    this.getStatus = getStatus;
     this.getActiveTabId = getActiveTabId;
     this.onActivate = onActivate;
     this.onClose = onClose;
@@ -30,26 +33,15 @@ class SessionsSidebar {
     this.render();
   }
 
-  /**
-   * Trang thai cua ca tab = trang thai "khan" nhat trong cac pane cua no:
-   * dang cho > dang chay > ranh > chet. Tab chia doi ma mot ben dang hoi thi
-   * ca tab phai bao la dang cho.
-   */
-  _tabStatus(tab) {
-    const order = ['waiting', 'running', 'idle', 'dead'];
-    const statuses = tab.panes.map((p) => p.status || (p.alive ? 'idle' : 'dead'));
-    return order.find((s) => statuses.includes(s)) || 'idle';
-  }
-
   render() {
     const { escapeHtml } = window.formatUtils;
     const tabs = [...this.getTabs().values()];
     const activeId = this.getActiveTabId();
-    const waitingCount = tabs.filter((t) => this._tabStatus(t) === 'waiting').length;
+    const waitingCount = tabs.filter((t) => this.getStatus(t) === 'waiting').length;
 
     const rows = tabs
       .map((tab) => {
-        const status = this._tabStatus(tab);
+        const status = this.getStatus(tab);
         const first = tab.panes[0];
         const type = first?.sessionType || 'shell';
         const sub = first?.cwd ? window.formatUtils.baseName(first.cwd) : '';
@@ -58,7 +50,7 @@ class SessionsSidebar {
             <span class="sess-dot" data-status="${status}" data-type="${escapeHtml(type)}"></span>
             <div class="project-info">
               <div class="project-name">${escapeHtml(tab.title)}</div>
-              <div class="project-sub">${escapeHtml(status === 'waiting' ? STATUS_LABEL.waiting : sub)}</div>
+              <div class="project-sub">${escapeHtml(status === 'idle' ? sub || STATUS_LABEL.idle : STATUS_LABEL[status])}</div>
             </div>
             <div class="project-actions">
               <button class="icon-btn" data-act="close" title="Đóng tab">${window.icons.svg('x', { size: 12 })}</button>
@@ -70,7 +62,7 @@ class SessionsSidebar {
     this.section.innerHTML = `
       <button class="sidebar-heading${this.collapsed ? ' is-collapsed' : ''}" data-toggle="sessions">
         <span class="chevron">${window.icons.svg('chevron-down')}</span>
-        <span>Phiên</span>
+        <span>Phiên đang mở</span>
         ${waitingCount ? `<span class="session-waiting-badge" title="${waitingCount} phiên đang chờ bạn">${waitingCount}</span>` : ''}
         <span class="count">${tabs.length}</span>
       </button>

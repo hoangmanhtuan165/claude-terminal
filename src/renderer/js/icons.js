@@ -34,6 +34,9 @@ const ICON_PATHS = {
   diamond:
     '<rect x="3" y="3" width="10" height="10" rx="2" transform="rotate(45 8 8)"/><path d="M6.2 5v6M6.2 8l2.6-3M6.2 8l2.6 3"/>',
   bolt: '<path d="M9 1.5 3.5 9h3.2L6 14.5 12.5 7H9.3L9 1.5Z"/>',
+  prompt: '<path d="M2.8 11.3 6.8 8l-4-3.3"/><path d="M8 12.6h5.3"/>',
+  bars: '<path d="M2.7 13.3V6.7M6.7 13.3V2.7M10.7 13.3V8.7M14.7 13.3H1.3"/>',
+  send: '<path d="M3.3 8h9.4M8.7 4l4 4-4 4"/>',
   paperclip:
     '<path d="M11.2 4.2 5.6 9.8a2.3 2.3 0 0 0 3.3 3.3l5.6-5.6a3.7 3.7 0 0 0-5.2-5.2L3.7 7.9a5.1 5.1 0 0 0 7.2 7.2"/>',
   sparkle:

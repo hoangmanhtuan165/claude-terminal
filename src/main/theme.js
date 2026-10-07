@@ -12,11 +12,12 @@ const { nativeTheme } = require('electron');
 
 /** Mau thanh tieu de phai khop bien --surface-titlebar trong app.css. */
 const TITLE_BAR_COLORS = {
-  dark: { color: '#15161d', symbolColor: '#9aa0b4' },
-  light: { color: '#f4f5f8', symbolColor: '#5a6072' },
+  dark: { color: '#0e0d0c', symbolColor: '#a8a196' },
+  light: { color: '#f4f1ea', symbolColor: '#5f594f' },
 };
 
-const TITLE_BAR_HEIGHT = 40;
+/** Phai bang --titlebar-h trong tokens.css. */
+const TITLE_BAR_HEIGHT = 52;
 
 /**
  * macOS dung `trafficLightPosition` de dat lai vi tri nut do/vang/xanh trong

@@ -6,10 +6,12 @@
  *
  * Bang mau terminal (--term-*) cung nam day de xterm va giao dien khong lech mau.
  *
- * Bang mau lay theo thiet ke "Claude Terminal v2" (Claude Design): nen kem am,
- * nhan teal-xanh la, hinh khoi bo tron nhieu (pill cho nut/tab/badge, the bo
- * goc lon cho hang phien/khoi ma). Ban toi la ban tu bien de giu theme-switch
- * hoat dong - thiet ke goc chi co mau sang.
+ * Bang mau theo thiet ke "KLTERMINAL — giao dien moi" (canvas Claude Design):
+ * nen toi am ba tang (titlebar #0e0d0c < sidebar #121110 < terminal #141311),
+ * nhan xanh ngoc #5ccfac, hoac/cho mau ho phach #f0b45a, nguy hiem do hong
+ * #ef6b73. Font Geist cho giao dien, JetBrains Mono cho ma/duong dan - ca hai
+ * dong goi trong node_modules vi CSP chan tai font tu mang. Ban sang la ban
+ * tu bien de giu theme-switch hoat dong - thiet ke goc chi co mau toi.
  */
 
 :root {
@@ -28,22 +30,22 @@
   --r-xl: 18px;
   --r-full: 999px;
 
-  --font-ui: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'Cascadia Mono', 'Cascadia Code', Consolas, monospace;
+  --font-ui: 'Geist Variable', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'Cascadia Mono', Consolas, monospace;
 
-  --fs-xs: 11px;
-  --fs-sm: 12px;
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
   --fs-md: 13px;
   --fs-lg: 15px;
   --fs-xl: 18px;
   --fs-2xl: 22px;
 
   /* Chuyen dong: du de cam nhan, du nhanh de khong can duong */
-  --dur-fast: 90ms;
-  --dur-base: 160ms;
-  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+  --dur-fast: 140ms;
+  --dur-base: 200ms;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 
-  --titlebar-h: 40px;
+  --titlebar-h: 52px;
   /* Windows ve nut thu/phong/dong o goc phai; phai chua cho cho chung */
   --window-controls-w: 140px;
 }
@@ -73,11 +75,16 @@
   --border-default: #e2dcd2;
   --border-strong: #d8d1c5;
 
-  --accent: #2f6f5e;
-  --accent-hover: #26594b;
-  --accent-soft: rgba(47, 111, 94, 0.1);
-  --accent-border: rgba(47, 111, 94, 0.4);
+  --accent: #1d7a61;
+  --accent-hover: #17644f;
+  --accent-soft: rgba(29, 122, 97, 0.1);
+  --accent-border: rgba(29, 122, 97, 0.4);
   --accent-contrast: #ffffff;
+
+  --warn: #9a6a12;
+  --warn-soft: rgba(154, 106, 18, 0.12);
+  --info: #2a62b8;
+  --info-soft: rgba(42, 98, 184, 0.1);
 
   --danger: #c8323d;
   --danger-soft: rgba(200, 50, 61, 0.1);
@@ -119,69 +126,74 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --bg-void: #131210;
-  --bg-base: #1a1812;
-  --bg-surface: #201e17;
-  --bg-raised: #232019;
-  --bg-overlay: #29261d;
-  --bg-hover: rgba(255, 255, 255, 0.05);
+  /* Ba tang nen: titlebar toi nhat, sidebar, roi vung terminal sang nhat -
+     mat tu nhien dat vao noi dung. */
+  --bg-void: #0e0d0c;
+  --bg-base: #141311;
+  --bg-surface: #121110;
+  --bg-raised: #1a1916;
+  --bg-overlay: #1d1b18;
+  --bg-hover: rgba(255, 255, 255, 0.045);
   --bg-active: rgba(255, 255, 255, 0.08);
 
-  --surface-titlebar: #201e17;
+  --surface-titlebar: #0e0d0c;
 
-  /* --text-tertiary cu (#7d766a) chi dat ~3.7-3.9:1 tren nen toi - duoi
-     nguong 4.5:1 cua WCAG AA cho chu thuong, trong khi day la mau dung rat
-     nhieu cho chu phu/subtitle (vd dong "N phien - thoi gian" o sidebar).
-     Nang len #948c7d (~4.5-5.3:1 tren moi nen toi) va don --text-quaternary
-     xuong nhan gia tri cu cua tertiary, van giu dung 4 cap do dam nhat. */
-  --text-primary: #ede9e0;
-  --text-secondary: #b0a99a;
-  --text-tertiary: #948c7d;
-  --text-quaternary: #7d766a;
+  /* Ty le tuong phan tren #141311: primary ~15:1, secondary ~7.6:1,
+     tertiary ~5:1 (dat WCAG AA cho chu thuong), quaternary chi dung cho
+     chu trang tri/khong mang thong tin. */
+  --text-primary: #ece8e1;
+  --text-secondary: #a8a196;
+  --text-tertiary: #8a8378;
+  --text-quaternary: #6c665d;
 
   --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.11);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
 
-  --accent: #52b298;
-  --accent-hover: #64c2a8;
-  --accent-soft: rgba(82, 178, 152, 0.16);
-  --accent-border: rgba(82, 178, 152, 0.42);
-  --accent-contrast: #0d1613;
+  --accent: #5ccfac;
+  --accent-hover: #74dbbb;
+  --accent-soft: rgba(92, 207, 172, 0.1);
+  --accent-border: rgba(92, 207, 172, 0.35);
+  --accent-contrast: #0e1a16;
 
-  --danger: #e5636c;
-  --danger-soft: rgba(229, 99, 108, 0.16);
-  --success: #7fc98a;
+  --warn: #f0b45a;
+  --warn-soft: rgba(240, 180, 90, 0.12);
+  --info: #9dbff5;
+  --info-soft: rgba(121, 168, 240, 0.12);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.6);
-  --shadow-accent: 0 6px 16px -8px rgba(82, 178, 152, 0.35);
-  --shadow-accent-strong: 0 6px 16px -8px rgba(82, 178, 152, 0.55);
+  --danger: #ef6b73;
+  --danger-soft: rgba(239, 107, 115, 0.1);
+  --success: #5ccfac;
 
-  --scrollbar: rgba(255, 255, 255, 0.14);
-  --scrollbar-hover: rgba(255, 255, 255, 0.26);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 30px -18px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 30px 80px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 0, 0, 0.4);
+  --shadow-accent: 0 6px 18px -10px rgba(92, 207, 172, 0.6);
+  --shadow-accent-strong: 0 10px 24px -10px rgba(92, 207, 172, 0.8);
 
-  --term-bg: #201e17;
-  --term-fg: #ede9e0;
-  --term-cursor: #52b298;
-  --term-selection: #33453e;
-  --term-black: #29261d;
-  --term-red: #e5636c;
-  --term-green: #7fc98a;
-  --term-yellow: #e0b653;
-  --term-blue: #6fa8e6;
-  --term-magenta: #c08adf;
-  --term-cyan: #63c5c0;
-  --term-white: #ede9e0;
-  --term-bright-black: #7d766a;
-  --term-bright-red: #ff7d86;
-  --term-bright-green: #9ae5a4;
-  --term-bright-yellow: #f5cf6b;
-  --term-bright-blue: #8dc0ff;
-  --term-bright-magenta: #d7a4f5;
-  --term-bright-cyan: #7fe0da;
-  --term-bright-white: #faf8f3;
+  --scrollbar: rgba(255, 255, 255, 0.12);
+  --scrollbar-hover: rgba(255, 255, 255, 0.22);
+
+  --term-bg: #141311;
+  --term-fg: #ece8e1;
+  --term-cursor: #5ccfac;
+  --term-selection: #23423a;
+  --term-black: #242220;
+  --term-red: #ef6b73;
+  --term-green: #5ccfac;
+  --term-yellow: #f0b45a;
+  --term-blue: #9dbff5;
+  --term-magenta: #c9a2f0;
+  --term-cyan: #6fd4d0;
+  --term-white: #d6d1c7;
+  --term-bright-black: #6c665d;
+  --term-bright-red: #ff9aa1;
+  --term-bright-green: #8fe3c8;
+  --term-bright-yellow: #ffd08a;
+  --term-bright-blue: #bcd4fa;
+  --term-bright-magenta: #ddbff7;
+  --term-bright-cyan: #9fe8e4;
+  --term-bright-white: #ffffff;
 }
 
 /* Nguoi dung bat "giam chuyen dong" trong Windows thi tat het hieu ung */

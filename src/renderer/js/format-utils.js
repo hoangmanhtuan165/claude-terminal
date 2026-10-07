@@ -99,6 +99,39 @@ function highlightHtml(text, needle) {
 }
 
 /**
+ * To sang phan khop cho ket qua tim kiem mo: khop nguyen cum thi to ca cum,
+ * khong thi to tung ky tu theo dung thu tu (cung quy tac voi fuzzyScore) -
+ * nguoi dung thay vi sao muc nay hien ra.
+ */
+function fuzzyHighlightHtml(text, query) {
+  const source = String(text ?? '');
+  if (!query) return escapeHtml(source);
+  const lower = source.toLowerCase();
+  const needle = query.toLowerCase();
+
+  const at = lower.indexOf(needle);
+  if (at !== -1) {
+    return (
+      escapeHtml(source.slice(0, at)) +
+      `<mark>${escapeHtml(source.slice(at, at + needle.length))}</mark>` +
+      escapeHtml(source.slice(at + needle.length))
+    );
+  }
+
+  let out = '';
+  let qi = 0;
+  for (let i = 0; i < source.length; i++) {
+    if (qi < needle.length && lower[i] === needle[qi]) {
+      out += `<mark>${escapeHtml(source[i])}</mark>`;
+      qi += 1;
+    } else {
+      out += escapeHtml(source[i]);
+    }
+  }
+  return qi === needle.length ? out : escapeHtml(source);
+}
+
+/**
  * Khop mo kieu "go tat": cac ky tu cua tu khoa phai xuat hien dung thu tu
  * nhung khong can lien nhau, nen `qlt` khop `quan ly terminal`.
  * Diem cao hon khi khop lien mach va khi khop som trong chuoi. Tra ve -1 neu
@@ -139,5 +172,6 @@ window.formatUtils = {
   baseName,
   toTitleLike,
   highlightHtml,
+  fuzzyHighlightHtml,
   fuzzyScore,
 };

@@ -22,8 +22,20 @@ const ACCESS_WARN_MINUTES = 30;
 const CONTEXT_COMPACT_WARN_PCT = 95;
 
 class AccountPanel {
-  constructor({ button, label, usageButton, usageLabel, updateButton, updateLabel, quickSend, onNeedTerminal }) {
+  constructor({
+    button,
+    label,
+    usageButton,
+    usageLabel,
+    usageCard,
+    updateButton,
+    updateLabel,
+    quickSend,
+    onNeedTerminal,
+  }) {
     this.button = button;
+    // The han muc cuoi sidebar (thanh 5 gio + tuan) - luon thay, khong can mo menu.
+    this.usageCard = usageCard || null;
     this.label = label;
     this.usageButton = usageButton;
     this.usageLabel = usageLabel;
@@ -43,6 +55,7 @@ class AccountPanel {
     this.button.addEventListener('click', () => this._toggleMenu());
     // Bam vao o muc dung cung mo menu tai khoan - moi chi tiet deu o do.
     this.usageButton?.addEventListener('click', () => this._toggleMenu());
+    this.usageCard?.addEventListener('click', () => this._toggleMenu());
 
     this.updateButton?.addEventListener('click', () => this._onUpdateButtonClick());
     window.api.update?.onStatus((status) => this._handleUpdateStatus(status));
@@ -149,6 +162,7 @@ class AccountPanel {
   }
 
   _paintUsage() {
+    this._paintUsageCard();
     if (!this.usageButton) return;
 
     const sessionPct = this.limits?.available ? this.limits.session?.pct : null;
@@ -438,6 +452,36 @@ class AccountPanel {
   }
 
   /** "reset lúc 19:30" - chi hien gio vi moc reset luon trong vong vai ngay. */
+  /**
+   * The han muc o day sidebar: hai thanh ngang cho phien 5 gio va tuan. Thanh
+   * tuan mau ho phach de khong lan voi thanh phien khi lien nhau. Bam vao mo
+   * menu tai khoan (co chi tiet). An khi chua co so lieu that.
+   */
+  _paintUsageCard() {
+    const card = this.usageCard;
+    if (!card) return;
+    const limits = this.limits;
+    if (!this.status.loggedIn || !limits?.available) {
+      card.hidden = true;
+      return;
+    }
+
+    const row = (label, pct, reset, cls) => {
+      if (pct === null || pct === undefined) return '';
+      const value = Math.max(0, Math.min(100, Math.round(pct)));
+      const resetShort = reset ? ` · ${reset.replace(/^reset lúc /, 'reset ')}` : '';
+      return `
+        <div class="usage-card-row"><span>${label}</span><span>${value}%${resetShort}</span></div>
+        <div class="usage-meter${cls ? ` ${cls}` : ''}"><i style="width: ${value}%"></i></div>`;
+    };
+
+    card.innerHTML =
+      row('Phiên 5 giờ', limits.session?.pct, this._resetText(limits.session?.resetsAt), '') +
+      row('Tuần', limits.weekly?.pct, null, 'is-weekly');
+    card.title = limits.stale ? `Số liệu cũ (${limits.staleReason})` : 'Hạn mức sử dụng — bấm để xem chi tiết';
+    card.hidden = false;
+  }
+
   _resetText(isoString) {
     if (!isoString) return null;
     const date = new Date(isoString);

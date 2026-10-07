@@ -36,14 +36,21 @@ const DEFAULT_QUICK_ITEMS = ['tiếp tục', 'tiếp', 'ok', '/compact', 'lỗi'
 class QuickSend {
   constructor({
     contextBarElement,
+    bypassBannerElement,
+    composerElement,
     quickBarElement,
     sshQuickBarElement,
     getActivePane,
     onPickFiles,
+    onPasteInto,
+    getReference,
     onSetPermissionMode,
     onNeedTerminal,
   }) {
     this.contextBar = contextBarElement;
+    this.bypassBanner = bypassBannerElement || null;
+    this.composer = composerElement || null;
+    this.composerInput = this.composer?.querySelector('.composer-input') || null;
     this.quickBar = quickBarElement;
     this.sshBar = sshQuickBarElement || null;
     // Nut model va nhan model gio nam trong context bar, tao lai moi lan
@@ -52,6 +59,10 @@ class QuickSend {
     this.modelLabel = null;
     this.getActivePane = getActivePane;
     this.onPickFiles = onPickFiles || (() => {});
+    // (pane, insert) - dan clipboard (ca anh) vao noi `insert` chi dinh.
+    this.onPasteInto = onPasteInto || (() => {});
+    // (pane, filePath) -> chuoi tham chieu @... (tab SSH: upload truoc).
+    this.getReference = getReference || ((_pane, filePath) => filePath);
     // (pane, mode) voi mode: 'ask' | 'auto' | 'bypass'.
     this.onSetPermissionMode = onSetPermissionMode || (() => {});
     this.onNeedTerminal = onNeedTerminal || (() => {});
@@ -63,7 +74,165 @@ class QuickSend {
     this.modelByCwd = {};
     // Tang moi lan doi tab, tranh phan hoi ssh.list() cham cua tab cu ghi de tab moi.
     this._sshBarSeq = 0;
+    /** cwd (chu thuong) -> { branch, at } - nhanh git hien o context bar. */
+    this._branchByCwd = new Map();
+    this._branchCheckedAt = new Map();
+    /** Cac lan gui tu o nhap, moi nhat cuoi - mui ten len de goi lai. */
+    this._sentHistory = [];
 
+    this._bindComposer();
+  }
+
+  // --- O nhap lenh -------------------------------------------------------------
+
+  _bindComposer() {
+    if (!this.composer) return;
+    const input = this.composerInput;
+
+    input.addEventListener('input', () => this._autosizeComposer());
+
+    input.addEventListener('keydown', (event) => {
+      // Go tieng Viet bang bo go co khung soan (IME): Enter dang chot chu,
+      // khong duoc gui.
+      if (event.isComposing) return;
+
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        this.sendComposer();
+        return;
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.getActivePane()?.term.focus();
+        return;
+      }
+      // Mui ten len khi o trong: goi lai cau vua gui (giong lich su lenh).
+      if (event.key === 'ArrowUp' && !input.value && this._sentHistory.length) {
+        event.preventDefault();
+        input.value = this._sentHistory[this._sentHistory.length - 1];
+        this._autosizeComposer();
+        return;
+      }
+      // Ctrl+V tu xu ly: clipboard co anh thi luu file + chen tham chieu @...
+      // nhu terminal; trinh duyet tu dan chi biet chu.
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'v') {
+        const pane = this.getActivePane();
+        if (!pane) return;
+        event.preventDefault();
+        this.onPasteInto(pane, (text) => this._insertText(text));
+      }
+    });
+
+    this.composer.addEventListener('click', (event) => {
+      const action = event.target.closest('[data-composer]')?.dataset.composer;
+      if (!action) return;
+      const pane = this.getActivePane();
+      if (action === 'send') this.sendComposer();
+      else if (action === 'attach' && pane) this.onPickFiles(pane, (text) => this._insertText(text));
+      else if (action === 'screenshot') this._captureScreenshot(event.target.closest('button'));
+      else if (action === 'expand') this._expandPrompt();
+    });
+  }
+
+  /** O nhap cao theo noi dung, toi da ~6 dong roi cuon. */
+  _autosizeComposer() {
+    const input = this.composerInput;
+    if (!input) return;
+    input.style.height = 'auto';
+    input.style.height = `${Math.min(input.scrollHeight, 132)}px`;
+  }
+
+  /** Chen chu tai vi tri con tro trong o nhap, tu them khoang cach hai ben. */
+  _insertText(text) {
+    const input = this.composerInput;
+    if (!input) return;
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const before = input.value.slice(0, start);
+    const after = input.value.slice(end);
+    const pad = (s) => (s && !/\s$/.test(s) ? ' ' : '');
+    const insert = `${pad(before)}${text}${after && !/^\s/.test(after) ? ' ' : ''}`;
+    input.value = before + insert + after;
+    const caret = (before + insert).length;
+    input.setSelectionRange(caret, caret);
+    input.focus();
+    this._autosizeComposer();
+  }
+
+  /**
+   * Gui noi dung o nhap xuong phien dang mo: dan (term.paste - co boc
+   * bracketed-paste khi Claude Code bat, nen nhieu dong van la MOT tin nhan)
+   * roi Enter. O trong thi chi gui Enter - tien cho cac hop "Enter to confirm".
+   */
+  sendComposer() {
+    const pane = this.getActivePane();
+    if (!pane || !this.composerInput) return false;
+
+    const text = this.composerInput.value.replace(/\s+$/, '');
+    this.onNeedTerminal();
+    if (text) {
+      pane.term.paste(text);
+      this._sentHistory.push(text);
+      if (this._sentHistory.length > 50) this._sentHistory.shift();
+    }
+    // Enter tach rieng sau mot nhip: mot so TUI (Claude Code) nhan dien "dang
+    // dan" theo thoi gian - Enter dinh lien vao khoi dan co the bi coi la mot
+    // phan noi dung chu khong phai lenh gui.
+    setTimeout(() => window.api.pty.write(pane.id, '\r'), text ? 40 : 0);
+
+    this.composerInput.value = '';
+    this._autosizeComposer();
+    this.composerInput.focus();
+    return true;
+  }
+
+  /** Doi theo loai tab: nut "viet lai cau hoi" chi co nghia voi Claude/Grok. */
+  renderComposer() {
+    if (!this.composer) return;
+    const pane = this.getActivePane();
+    const type = pane?.sessionType || 'shell';
+    const isAgent = type === 'claude' || type === 'claude-resume' || type === 'grok';
+    this.composer.classList.toggle('is-disabled', !pane);
+    const expand = this.composer.querySelector('[data-composer="expand"]');
+    if (expand) expand.hidden = !isAgent;
+    this.composerInput.placeholder = !pane
+      ? 'Chưa có tab nào đang mở'
+      : isAgent
+        ? 'Hỏi Claude hoặc gõ lệnh /…'
+        : type === 'ssh'
+          ? 'Gõ lệnh cho máy chủ…'
+          : 'Gõ lệnh…';
+  }
+
+  // --- Duong dan / nhanh git cho context bar -----------------------------------
+
+  /** Rut gon thu muc nha thanh "~" cho de doc: C:\Users\ten\x -> ~\x. */
+  _shortPath(cwd) {
+    if (!cwd) return '';
+    return String(cwd).replace(/^[A-Za-z]:\\Users\\[^\\]+/i, '~').replace(/^\/(home|Users)\/[^/]+/, '~');
+  }
+
+  /**
+   * Lay nhanh git cua thu muc tab dang mo (bat dong bo) roi ve lai context bar
+   * NEU co doi. Nho ket qua 5 giay de doi qua lai giua cac tab khong goi git
+   * lien tuc; bo qua ket qua tra ve muon cua tab cu.
+   */
+  _refreshBranch(pane) {
+    if (!pane?.cwd || pane.sessionType === 'ssh') return;
+    const key = pane.cwd.toLowerCase();
+    const checkedAt = this._branchCheckedAt.get(key) || 0;
+    if (Date.now() - checkedAt < 5000) return;
+    this._branchCheckedAt.set(key, Date.now());
+
+    window.api.git
+      .branch(pane.cwd)
+      .then((branch) => {
+        const next = branch || null;
+        if (this._branchByCwd.get(key) === next) return;
+        this._branchByCwd.set(key, next);
+        if (this.getActivePane()?.cwd?.toLowerCase() === key) this.renderContextBar();
+      })
+      .catch(() => {});
   }
 
   async loadPrefs() {
@@ -103,7 +272,7 @@ class QuickSend {
       ${this.items
         .map(
           (text, index) =>
-            `<button class="quick-chip" data-index="${index}" title="Gõ &quot;${escapeHtml(text)}&quot; xuống terminal">${escapeHtml(text)}</button>`,
+            `<button class="quick-chip${text.startsWith('/') ? ' is-slash' : ''}" data-index="${index}" title="Gõ &quot;${escapeHtml(text)}&quot; xuống terminal">${escapeHtml(text)}</button>`,
         )
         .join('')}
       <button class="quick-chip quick-chip-icon" data-action="library" title="Thư viện prompt">
@@ -147,6 +316,8 @@ class QuickSend {
     if (!pane) {
       this.contextBar.innerHTML = '';
       this.contextBar.dataset.mode = '';
+      if (this.bypassBanner) this.bypassBanner.hidden = true;
+      this.renderComposer();
       return;
     }
 
@@ -155,45 +326,40 @@ class QuickSend {
     const isClaude = type === 'claude' || type === 'claude-resume';
     const mode = pane.skipPermissions ? 'bypass' : pane.autoMode ? 'auto' : 'ask';
     this.contextBar.dataset.mode = isClaude ? mode : '';
+    // Dai canh bao Bypass ngay duoi context bar - thay cho to do ca hang:
+    // co chu noi ro hau qua, va chi hien khi that su dang bat.
+    if (this.bypassBanner) this.bypassBanner.hidden = !(isClaude && mode === 'bypass');
 
-    const iconName = type === 'ssh' ? 'server' : isAgent ? 'sparkle' : 'terminal-prompt';
     const label = type === 'ssh' ? pane.title : baseName(pane.cwd) || pane.cwd || 'home';
-    const sub = type === 'ssh' ? '' : pane.cwd || '';
-
+    const path = type === 'ssh' ? '' : this._shortPath(pane.cwd);
     const remembered = pane.cwd ? this.modelByCwd[pane.cwd.toLowerCase()] : null;
+    const branch = pane.cwd ? this._branchByCwd.get(pane.cwd.toLowerCase()) : null;
+
+    const seg = (m) => `segment${mode === m ? ` is-active is-${m}` : ''}`;
 
     this.contextBar.innerHTML = `
-      <div class="ctx-left" title="${escapeHtml(sub)}">
-        <span class="ctx-icon" data-type="${escapeHtml(type)}">${window.icons.svg(iconName, { size: 13 })}</span>
+      <div class="ctx-left" title="${escapeHtml(pane.cwd || '')}">
         <span class="ctx-title">${escapeHtml(label)}</span>
+        ${path ? `<span class="ctx-path">${escapeHtml(path)}</span>` : ''}
+        ${branch ? `<span class="ctx-branch">${window.icons.svg('git-branch', { size: 11 })}${escapeHtml(branch)}</span>` : ''}
       </div>
       <div class="ctx-right">
         ${
           isClaude
             ? `<div class="segmented ctx-mode" role="radiogroup" aria-label="Chế độ quyền">
-                 <button class="segment${mode === 'ask' ? ' is-active' : ''}" data-mode="ask" title="Claude hỏi trước mỗi thao tác sửa file / chạy lệnh">Hỏi</button>
-                 <button class="segment${mode === 'auto' ? ' is-active' : ''}" data-mode="auto" title="--permission-mode auto: tự duyệt việc an toàn, vẫn hỏi khi rủi ro">Auto</button>
-                 <button class="segment segment-danger${mode === 'bypass' ? ' is-active' : ''}" data-mode="bypass" title="--dangerously-skip-permissions: KHÔNG hỏi gì cả, kể cả việc nguy hiểm">Bypass</button>
+                 <button class="${seg('ask')}" role="radio" aria-checked="${mode === 'ask'}" data-mode="ask" title="Claude hỏi trước mỗi thao tác sửa file / chạy lệnh">Hỏi</button>
+                 <button class="${seg('auto')}" role="radio" aria-checked="${mode === 'auto'}" data-mode="auto" title="--permission-mode auto: tự duyệt việc an toàn, vẫn hỏi khi rủi ro">Auto</button>
+                 <button class="${seg('bypass')}" role="radio" aria-checked="${mode === 'bypass'}" data-mode="bypass" title="--dangerously-skip-permissions: KHÔNG hỏi gì cả, kể cả việc nguy hiểm">${window.icons.svg('bolt', { size: 12 })}Bypass</button>
                </div>
                <button class="ctx-model" data-action="model" title="Đổi model cho phiên Claude đang chạy">
-                 ${window.icons.svg('cpu', { size: 12 })}<span class="ctx-model-label">${escapeHtml(remembered || 'model')}</span>
+                 ${window.icons.svg('cpu', { size: 13 })}<span class="ctx-model-label">${escapeHtml(remembered || 'model')}</span>${window.icons.svg('chevron-down', { size: 12 })}
                </button>`
             : ''
         }
-        ${
-          isAgent
-            ? `<button class="quick-chip quick-chip-icon" data-action="expand-prompt" title="Gửi dòng đang gõ, rồi nhờ Claude gợi ý cách hỏi rõ ràng/chi tiết hơn cho lần sau">
-                 ${window.icons.svg('sparkle', { size: 13 })}
-               </button>`
-            : ''
-        }
-        <button class="quick-chip quick-chip-icon" data-action="attach" title="Chèn file vào terminal">
-          ${window.icons.svg('paperclip', { size: 13 })}
-        </button>
-        <button class="quick-chip quick-chip-icon" data-action="screenshot" title="Chụp màn hình rồi dán vào terminal">
-          ${window.icons.svg('camera', { size: 13 })}
-        </button>
       </div>`;
+
+    this._refreshBranch(pane);
+    this.renderComposer();
 
     this.modelButton = this.contextBar.querySelector('[data-action="model"]');
     this.modelLabel = this.contextBar.querySelector('.ctx-model-label');
@@ -206,16 +372,6 @@ class QuickSend {
       });
     }
 
-    this.contextBar.querySelector('[data-action="attach"]')?.addEventListener('click', () => {
-      const p = this.getActivePane();
-      if (p) this.onPickFiles(p);
-    });
-    this.contextBar
-      .querySelector('[data-action="expand-prompt"]')
-      ?.addEventListener('click', () => this._expandPrompt());
-    this.contextBar
-      .querySelector('[data-action="screenshot"]')
-      ?.addEventListener('click', (event) => this._captureScreenshot(event.currentTarget));
 
     // Chip go nhanh chi co y nghia khi phia kia la agent (Claude/Grok) - voi
     // shell tran "tiếp tục"/"ok" chi la lenh khong ton tai.
@@ -400,9 +556,13 @@ class QuickSend {
       if (!result) return;
 
       this.onNeedTerminal();
-      const quoted = /\s/.test(result.filePath) ? `"${result.filePath}"` : result.filePath;
-      window.api.pty.write(pane.id, quoted);
-      requestAnimationFrame(() => pane.term.focus());
+      const reference = await this.getReference(pane, result.filePath);
+      if (!reference) return;
+      if (this.composerInput) this._insertText(reference);
+      else {
+        window.api.pty.write(pane.id, reference);
+        requestAnimationFrame(() => pane.term.focus());
+      }
       this._showScreenshotPreview(button, result.dataUrl);
     } finally {
       button.classList.remove('is-waiting');
@@ -454,6 +614,15 @@ class QuickSend {
       pane.term.write(
         '\r\n\x1b[31m--- chỉ dùng được trong tab Claude Code, không dùng được ở tab shell/SSH trần ---\x1b[0m\r\n',
       );
+      return;
+    }
+
+    // Co ban nhap trong o nhap lenh: nho Claude viet lai CHINH ban nhap do ma
+    // khong gui no di - nguoi dung doc goi y roi tu sua o nhap va gui that.
+    const composerDraft = this.composerInput?.value.trim();
+    if (composerDraft) {
+      this.composerInput.value = `Viết lại yêu cầu sau thành một prompt rõ ràng, chi tiết, đầy đủ ngữ cảnh hơn - chỉ trả về đúng đoạn prompt đã viết lại, chưa thực hiện yêu cầu đó:\n\n${composerDraft}`;
+      this.sendComposer();
       return;
     }
 
